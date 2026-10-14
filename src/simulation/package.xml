@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>robot_mujoco_sim</name>
+  <version>0.1.0</version>
+  <description>Python ROS 2 MuJoCo simulator for multi-robot</description>
+  <maintainer email="2738112030@qq.com">zhang</maintainer>
+  <license>TODO</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <buildtool_depend>python3-setuptools</buildtool_depend>
+  <depend>rclpy</depend>
+  <depend>ament_index_python</depend>
+  <depend>std_srvs</depend>
+  <depend>z_msgs</depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

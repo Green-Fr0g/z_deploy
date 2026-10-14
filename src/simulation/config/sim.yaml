@@ -1,0 +1,15 @@
+
+robot: "h2"
+scene: "empty.xml"
+
+sim_frequency: 500.0
+state_publish_frequency: 200.0
+imu_publish_frequency: 200.0
+
+command_timeout: 0.25
+
+print_scene_information: 0
+enable_elastic_band: 1
+enable_camera_follow: 0
+
+viewer: "native"
