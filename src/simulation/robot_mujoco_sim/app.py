@@ -67,6 +67,8 @@ class SimulatorApp:
                     follow_camera=self._follow_camera,
                     stop_event=self._stop,
                     timestep=self._config.timestep,
+                    robot_name=self._config.robot,
+                    follow_yaw=self._config.follow_yaw,
                 )
                 try:
                     viewer.run()

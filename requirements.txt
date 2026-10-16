@@ -1,0 +1,9 @@
+# Install with /usr/bin/python3 -m pip install --user -r requirements.txt.
+# ROS 2 Humble's Python tooling is provided by apt, alongside Python 3.10.
+numpy>=1.21,<1.25
+scipy>=1.8,<1.16
+PyYAML>=5.4,<7
+mujoco>=3.6,<4
+# The viewer adapter uses the APIs of these versions.
+mjviser==0.0.14
+viser==1.1.1

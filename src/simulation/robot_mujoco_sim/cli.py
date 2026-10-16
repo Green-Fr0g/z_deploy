@@ -14,9 +14,9 @@ def build_parser() -> argparse.ArgumentParser:
         description='Run the multi-robot MuJoCo ROS 2 simulator.',
         epilog=(
             'Examples:\n'
-            '  robot_mujoco_sim\n'
-            '  robot_mujoco_sim --robot h2 --scene empty.xml\n'
-            '  robot_mujoco_sim --viewer mjviser --camera'
+            '  ros2 run robot_mujoco_sim robot_mujoco_sim\n'
+            '  ros2 run robot_mujoco_sim robot_mujoco_sim --robot h2 --scene empty.xml\n'
+            '  ros2 run robot_mujoco_sim robot_mujoco_sim --viewer mjviser --camera'
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(

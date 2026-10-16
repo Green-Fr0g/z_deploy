@@ -12,5 +12,7 @@
   <depend>std_srvs</depend>
   <depend>z_msgs</depend>
   <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
   <export><build_type>ament_python</build_type></export>
 </package>

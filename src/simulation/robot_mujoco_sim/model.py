@@ -10,12 +10,38 @@ import numpy as np
 class ElasticBand:
     """Virtual spring used to lift humanoid models while tuning controllers."""
 
+    MIN_LENGTH = 0.2
+
     def __init__(self) -> None:
         self.stiffness = 200.0
         self.damping = 100.0
-        self.point = np.array((0.0, 0.0, 2.5), dtype=float)
-        self.length = 0.0
+        self.point = np.array((0.0, 0.0, 8.0), dtype=float)
+        self._length = self.MIN_LENGTH
         self.enable = True
+
+    @property
+    def length_limits(self) -> tuple[float, float]:
+        """Return the valid band length range in metres.
+
+        The upper limit follows the connection point: a band may be at most
+        one metre longer than the point's world-Z coordinate.  Keep the lower
+        limit at 0.2 m so both the native key controls and web slider always
+        use the same safe range.
+        """
+        minimum = float(self.MIN_LENGTH)
+        maximum = max(minimum, float(self.point[2]) + 1.0)
+        return minimum, maximum
+
+    @property
+    def length(self) -> float:
+        minimum, maximum = self.length_limits
+        self._length = float(np.clip(self._length, minimum, maximum))
+        return self._length
+
+    @length.setter
+    def length(self, value: float) -> None:
+        minimum, maximum = self.length_limits
+        self._length = float(np.clip(float(value), minimum, maximum))
 
     def advance(self, position: np.ndarray, velocity: np.ndarray) -> np.ndarray:
         delta = self.point - position[:3]
@@ -152,15 +178,6 @@ class RobotModel:
 
     def step(self) -> None:
         mujoco.mj_step(self.model, self.data)
-
-
-    def elastic_band_body_id(self) -> int:
-        """Choose Unitree's humanoid torso, or the usual quadruped base."""
-        for name in ('torso_link', 'trunk', 'base_link'):
-            body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, name)
-            if body_id >= 0:
-                return int(body_id)
-        return 1 if self.model.nbody > 1 else 0
 
     def body_pose(self, name: str) -> tuple[np.ndarray, np.ndarray] | None:
         """Return ``(position, rotation)`` of a body, or ``None`` if absent."""

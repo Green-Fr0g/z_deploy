@@ -10,6 +10,7 @@ command_timeout: 0.25
 
 print_scene_information: 0
 enable_elastic_band: 1
-enable_camera_follow: 0
+enable_camera_follow: 1
 
-viewer: "native"
+viewer: "mjviser"
+follow_yaw: 1

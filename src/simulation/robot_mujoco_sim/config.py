@@ -36,6 +36,7 @@ class SimConfig:
     print_scene_information: bool = False
     enable_elastic_band: bool = False
     enable_camera_follow: bool = False
+    follow_yaw: bool = False
     viewer: str = 'native'
 
     @property
@@ -132,6 +133,7 @@ def load_config(path: pathlib.Path | None = None,
         print_scene_information=bool(section.get('print_scene_information', 0)),
         enable_elastic_band=bool(section.get('enable_elastic_band', 0)),
         enable_camera_follow=bool(section.get('enable_camera_follow', 0)),
+        follow_yaw=bool(section.get('follow_yaw', 0)),
         viewer=str(viewer or section.get('viewer', 'native')).strip().lower(),
     )
     _validate(config, config_path)
