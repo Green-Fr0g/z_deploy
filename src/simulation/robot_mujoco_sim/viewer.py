@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import abc
+import logging
 import math
 import os
+import queue
 import threading
 import time
 from typing import TYPE_CHECKING
@@ -15,6 +17,9 @@ from .model import ElasticBand, RobotModel
 
 if TYPE_CHECKING:
     from .node import RobotMujocoSimNode
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class ViewerError(RuntimeError):
@@ -43,13 +48,6 @@ def _mujoco_camera_offset(azimuth: float, elevation: float,
         -distance * math.cos(elevation_radians) * math.sin(azimuth_radians),
         -distance * math.sin(elevation_radians),
     ), dtype=float)
-
-
-def _mujoco_azimuth_from_offset(offset: np.ndarray) -> float:
-    """Recover MuJoCo's azimuth from a camera offset around its target."""
-    if math.hypot(float(offset[0]), float(offset[1])) < 1e-9:
-        return 0.0
-    return math.degrees(math.atan2(-float(offset[1]), -float(offset[0])))
 
 
 CAMERA_FOLLOW_BODY_REGISTRY: dict[str, str] = {
@@ -147,6 +145,19 @@ class SimulatorViewer(abc.ABC):
     def _reset_robot(self) -> None:
         self._robot.reset_to_keyframe('home')
 
+    def _step(self, model=None, data=None) -> None:
+        """Advance one tick while holding the shared simulation lock."""
+        del model, data
+        with self._node.lock:
+            if not self._node.is_paused():
+                self._step_simulation()
+
+    def _reset(self, model=None, data=None) -> None:
+        """Reset the simulation while holding the shared simulation lock."""
+        del model, data
+        with self._node.lock:
+            self._reset_robot()
+
     def _add_elastic_band_controls(self) -> None:
         """Add backend-specific band controls when the backend supports them."""
 
@@ -163,16 +174,8 @@ class SimulatorViewer(abc.ABC):
         """Return whether the backend is still active."""
 
     @abc.abstractmethod
-    def _step(self, model=None, data=None) -> None:
-        """Advance one simulation tick for the backend callback."""
-
-    @abc.abstractmethod
     def _render(self, scene=None) -> None:
         """Render one frame and update the follow camera."""
-
-    @abc.abstractmethod
-    def _reset(self, model=None, data=None) -> None:
-        """Reset the simulation state for the backend callback."""
 
     @abc.abstractmethod
     def _update_camera(self, scene=None) -> None:
@@ -193,7 +196,8 @@ class NativeViewer(SimulatorViewer):
                 'No display detected (DISPLAY and WAYLAND_DISPLAY are unset).')
         try:
             import mujoco.viewer
-            callback = elastic_band.key_callback if elastic_band is not None else None
+            self._key_events = queue.SimpleQueue()
+            callback = self._key_events.put if elastic_band is not None else None
             self._viewer = mujoco.viewer.launch_passive(
                 robot.model, robot.data, key_callback=callback)
         except Exception as error:
@@ -204,45 +208,49 @@ class NativeViewer(SimulatorViewer):
         next_step = time.perf_counter()
         next_render = 0.0
         while not self._stop_event.is_set() and self.is_running():
-            with self._node.lock:
-                self._step()
-                if time.perf_counter() >= next_render:
-                    next_render = time.perf_counter() + 1.0 / 60.0
-                    self._render()
+            self._step()
+            if time.perf_counter() >= next_render:
+                next_render = time.perf_counter() + 1.0 / 60.0
+                self._render()
+                # sync() reads/writes robot.data, including GUI edits/reset.
+                # Its internal viewer lock does not protect ROS callbacks.
                 try:
-                    self._viewer.sync()
+                    with self._node.lock:
+                        self._viewer.sync()
                 except Exception:
                     break
             next_step = _advance_clock(next_step, self._timestep)
 
     def _step(self, model=None, data=None) -> None:
         del model, data
-        if not self._node.is_paused():
-            self._step_simulation()
+        # GLFW callbacks may hold the viewer lock. Queue keys there rather
+        # than acquiring node.lock in the reverse order of sync().
+        with self._node.lock:
+            while not self._key_events.empty():
+                self._elastic_band.key_callback(self._key_events.get_nowait())
+        super()._step()
 
     def _render(self, scene=None) -> None:
         del scene
-        if self._follow_camera:
-            self._update_camera()
+        if not self._follow_camera or not hasattr(self._viewer, 'cam'):
+            return
+        self._update_camera()
 
     def _update_camera(self, scene=None) -> None:
         del scene
-        if not hasattr(self._viewer, 'cam'):
-            return
-        pose = self._camera_pose()
+        # Copy under the physics lock before acquiring the viewer lock.
+        with self._node.lock:
+            pose = self._camera_pose()
         if pose is None:
             return
         position, rotation = pose
-        self._viewer.cam.lookat[:] = position
-        if self._follow_yaw:
-            self._viewer.cam.azimuth = yaw_degrees(rotation)
-        self._viewer.cam.elevation = NATIVE_CAMERA_ELEVATION
-        self._viewer.cam.distance = NATIVE_CAMERA_DISTANCE
-
-    def _reset(self, model=None, data=None) -> None:
-        del model, data
-        with self._node.lock:
-            self._reset_robot()
+        with self._viewer.lock():
+            cam = self._viewer.cam
+            cam.lookat[:] = position
+            if self._follow_yaw:
+                cam.azimuth = yaw_degrees(rotation)
+                cam.elevation = NATIVE_CAMERA_ELEVATION
+                cam.distance = NATIVE_CAMERA_DISTANCE
 
     def close(self) -> None:
         if self._closed:
@@ -260,6 +268,16 @@ class NativeViewer(SimulatorViewer):
 class MjviserViewer(SimulatorViewer):
     """Active viewer adapter for the pip-installed ``mjviser.Viewer``."""
 
+    _SCENE_ARRAYS = (
+        ('body_xpos', 'xpos'),
+        ('body_xmat', 'xmat'),
+        ('mocap_pos', 'mocap_pos'),
+        ('mocap_quat', 'mocap_quat'),
+        ('qpos', 'qpos'),
+        ('qvel', 'qvel'),
+        ('ctrl', 'ctrl'),
+    )
+
     def __init__(self, robot: RobotModel, node: RobotMujocoSimNode,
                  elastic_band: ElasticBand | None, follow_camera: bool,
                  stop_event: threading.Event, robot_name: str = 'h2',
@@ -267,18 +285,20 @@ class MjviserViewer(SimulatorViewer):
         super().__init__(robot, node, elastic_band, follow_camera, stop_event,
                          robot_name, follow_yaw)
         try:
-            import mjviser
+            from ._mjviser import SynchronizedViewer
         except ImportError as error:
             raise ViewerError('viewer="mjviser" requires the pip mjviser package') from error
-        viewer_type = getattr(mjviser, 'Viewer', None)
-        if viewer_type is None:
-            raise ViewerError('Installed mjviser package does not provide Viewer')
+        self._camera_state_lock = threading.Lock()
+        self._camera_update_pending = False
+        self._pending_azimuth: float | None = None
         try:
-            self._viewer = viewer_type(
+            self._viewer = SynchronizedViewer(
                 robot.model, robot.data,
                 step_fn=self._step,
                 render_fn=self._render,
                 reset_fn=self._reset,
+                simulation_lock=node.lock,
+                camera_gui=self._add_camera_controls,
             )
             # Mjviser tracks its first movable body when this flag is enabled.
             # Set it before ``Viewer.run()`` builds the camera GUI so the
@@ -291,62 +311,125 @@ class MjviserViewer(SimulatorViewer):
                     robot.model, mujoco.mjtObj.mjOBJ_BODY, self._camera_body)
                 if hasattr(self._viewer.scene, '_tracked_body_id'):
                     self._viewer.scene._tracked_body_id = int(body_id)
+            # All camera writers, including GUI/connect callbacks below, run
+            # on the same event loop as incoming browser camera messages.
+            self._camera_loop = self._viewer.scene.server.get_event_loop()
             self._add_elastic_band_controls()
         except Exception as error:
             raise ViewerError(f'Cannot open the Mjviser viewer: {error}') from error
 
-    def _step(self, model=None, data=None) -> None:
-        del model, data
-        with self._node.lock:
-            if not self._node.is_paused():
-                self._step_simulation()
-
     def _render(self, scene=None) -> None:
         if scene is None:
             scene = self._viewer.scene
+        snapshot, azimuth = self._scene_snapshot()
+        # update_from_arrays() runs mj_forward() on scene.mj_data before
+        # taking its own lock. Cover that work as well as GUI scene rebuilds.
+        # Never acquire node.lock while holding the scene lock.
+        with self._viewer.scene_update_lock():
+            scene.update_from_arrays(**snapshot)
+        if azimuth is not None:
+            self._queue_camera_update(scene, azimuth)
+
+    def _scene_snapshot(self) -> tuple[dict[str, np.ndarray], float | None]:
+        """Copy one consistent physics frame for Mjviser and camera follow."""
         with self._node.lock:
-            scene.update_from_mjdata(self._robot.data)
-            tracking_enabled = getattr(scene, 'camera_tracking_enabled',
-                                        self._follow_camera)
-            if self._follow_camera and tracking_enabled:
-                self._update_camera(scene)
+            data = self._robot.data
+            snapshot = {
+                target: np.array(getattr(data, source), copy=True)[None, ...]
+                for target, source in self._SCENE_ARRAYS
+            }
+            snapshot['body_xmat'] = snapshot['body_xmat'].reshape(1, -1, 3, 3)
+            pose = self._camera_pose() if self._follow_yaw else None
+        return snapshot, None if pose is None else yaw_degrees(pose[1])
 
     def _update_camera(self, scene=None) -> None:
-        """Keep each connected Viser camera identical to MuJoCo's free view.
-
-        Mjviser keeps the tracked body at the origin by translating the
-        rendered scene.  Its built-in camera helper uses a different default
-        distance, elevation convention, and azimuth offset, so set the client
-        position with MuJoCo's spherical-camera equation directly.
-        """
+        """Queue a camera update using the current robot yaw."""
         if scene is None:
             scene = self._viewer.scene
-        if self._camera_body is None:
+        if self._camera_body is None or not self._follow_yaw:
             return
-        pose = self._camera_pose()
+        with self._node.lock:
+            pose = self._camera_pose()
         if pose is None:
             return
-        _, rotation = pose
-        clients = scene.server.get_clients().values()
-        for client in clients:
-            position = np.asarray(client.camera.position, dtype=float)
-            look_at = np.asarray(client.camera.look_at, dtype=float)
-            if self._follow_yaw:
-                azimuth = yaw_degrees(rotation)
-            else:
-                # With yaw following disabled, preserve the user's current
-                # horizontal view while correcting distance/elevation to the
-                # native MuJoCo values.
-                azimuth = _mujoco_azimuth_from_offset(position - look_at)
-            offset = _mujoco_camera_offset(
-                azimuth, NATIVE_CAMERA_ELEVATION, NATIVE_CAMERA_DISTANCE)
-            client.camera.position = offset
-            client.camera.look_at = np.zeros(3)
+        self._queue_camera_update(scene, yaw_degrees(pose[1]))
 
-    def _reset(self, model=None, data=None) -> None:
-        del model, data
-        with self._node.lock:
-            self._reset_robot()
+    def _queue_camera_update(self, scene, azimuth: float) -> None:
+        """Coalesce a yaw update and dispatch it to Viser's event loop."""
+        loop = self._camera_loop
+        if self._closed or loop.is_closed():
+            return
+        with self._camera_state_lock:
+            self._pending_azimuth = azimuth
+            if self._camera_update_pending:
+                return
+            self._camera_update_pending = True
+        try:
+            loop.call_soon_threadsafe(self._apply_camera_update, scene)
+        except RuntimeError:
+            with self._camera_state_lock:
+                self._camera_update_pending = False
+
+    def _apply_camera_update(self, scene) -> None:
+        with self._camera_state_lock:
+            azimuth = self._pending_azimuth
+            self._camera_update_pending = False
+        # Recheck after dispatch: the user may have disabled tracking while
+        # this callback was queued. With yaw disabled, scene translation alone
+        # follows the robot and preserves the user's camera orientation.
+        if self._closed or not scene.camera_tracking_enabled or azimuth is None:
+            return
+        offset = _mujoco_camera_offset(
+            azimuth, NATIVE_CAMERA_ELEVATION, NATIVE_CAMERA_DISTANCE)
+        for client in scene.server.get_clients().values():
+            self._set_client_camera(client, offset, np.zeros(3))
+
+    @staticmethod
+    def _set_client_camera(client, position, look_at, *, fov=None) -> None:
+        """Called only on Viser's event loop; atomic() batches messages."""
+        try:
+            with client.atomic():
+                if fov is not None:
+                    client.camera.fov = fov
+                client.camera.position = position
+                client.camera.look_at = look_at
+        except (ValueError, RuntimeError) as error:
+            _LOGGER.warning('Cannot update camera for client %s: %s',
+                            client.client_id, error)
+
+    def _add_camera_controls(self) -> None:
+        """Replace upstream worker-thread camera writers with async callbacks."""
+        scene = self._viewer.scene
+        server = scene.server
+        center = np.array(self._robot.model.stat.center, copy=True)
+        # Match the shared MuJoCo framing from the first connected frame.
+        offset = _mujoco_camera_offset(
+            120.0, NATIVE_CAMERA_ELEVATION, NATIVE_CAMERA_DISTANCE)
+        with server.gui.add_folder('Camera'):
+            tracking = server.gui.add_checkbox(
+                'Track camera', initial_value=scene.camera_tracking_enabled)
+            fov = server.gui.add_slider(
+                'FOV (°)', min=20, max=150, step=1, initial_value=60)
+
+        @tracking.on_update
+        async def _(_) -> None:
+            with self._viewer.scene_update_lock():
+                scene.camera_tracking_enabled = bool(tracking.value)
+                scene.needs_update = True
+            if tracking.value:
+                for client in server.get_clients().values():
+                    self._set_client_camera(client, offset, np.zeros(3))
+
+        @fov.on_update
+        async def _(_) -> None:
+            for client in server.get_clients().values():
+                client.camera.fov = math.radians(fov.value)
+
+        @server.on_client_connect
+        async def _(client) -> None:
+            target = np.zeros(3) if scene.camera_tracking_enabled else center
+            self._set_client_camera(client, offset + target, target,
+                                    fov=math.radians(fov.value))
 
     def _add_elastic_band_controls(self) -> None:
         if self._elastic_band is None:
@@ -391,6 +474,7 @@ class MjviserViewer(SimulatorViewer):
 
     def is_running(self) -> bool:
         return not self._closed
+
 
 def _advance_clock(next_step: float, timestep: float) -> float:
     next_step += timestep

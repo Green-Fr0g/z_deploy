@@ -13,4 +13,4 @@ enable_elastic_band: 1
 enable_camera_follow: 1
 
 viewer: "mjviser"
-follow_yaw: 1
+follow_yaw: 0
