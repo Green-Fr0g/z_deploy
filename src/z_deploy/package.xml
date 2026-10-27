@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>z_deploy</name>
+  <version>0.1.0</version>
+  <description>Robot policy deployment runtime for simulation.</description>
+  <maintainer email="maintainer@example.com">frog</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>std_srvs</depend>
+  <depend>z_msgs</depend>
+  <depend>yaml-cpp</depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

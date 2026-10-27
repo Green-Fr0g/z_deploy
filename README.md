@@ -1,6 +1,6 @@
 # z_deploy
 
-MuJoCo + ROS 2 Humble 仿真部署工作区，包含 `robot_mujoco_sim` 仿真节点和 `z_msgs` 自定义消息。
+MuJoCo + ROS 2 Humble 仿真与策略部署工作区，包含 `robot_mujoco_sim` 仿真节点、`z_msgs` 自定义消息和 `z_deploy` C++ 部署包。
 
 ## 环境要求
 
@@ -13,6 +13,26 @@ MuJoCo + ROS 2 Humble 仿真部署工作区，包含 `robot_mujoco_sim` 仿真�
 source /opt/ros/humble/setup.bash
 /usr/bin/python3 --version
 ```
+
+## 获取仓库和子模块
+
+Unitree SDK2 位于 `src/z_deploy/library/unitree_sdk2`，作为 Git 子模块固定到项目使用的 SDK2.0 版本。首次获取仓库时初始化子模块：
+
+```bash
+git clone --recurse-submodules <repository-url>
+cd z_deploy
+```
+
+已有工作区执行：
+
+```bash
+git submodule update --init --recursive
+git -C src/z_deploy/library/unitree_sdk2 describe --tags --always
+```
+
+SDK 的预编译库按 CPU 架构放在子模块的 `lib/x86_64` 和 `lib/aarch64` 中。当前 `z_deploy` 默认运行仿真模式；后续启用真实 Unitree 硬件后，直接复用该子模块，不需要把 SDK 源码复制到主仓库。
+
+子模块初始化后，SDK 文件会正常出现在工作区目录中，但主仓库只跟踪 `src/z_deploy/library/unitree_sdk2` 这一条提交指针；`git status` 不会逐个列出 SDK 文件。若暂时不需要本地展开 SDK，可执行 `git submodule deinit src/z_deploy/library/unitree_sdk2`，之后用 `git submodule update --init` 恢复。
 
 ## 安装依赖
 
@@ -40,6 +60,21 @@ source /opt/ros/humble/setup.bash
 /usr/bin/python3 /usr/bin/colcon build --symlink-install \
   --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
 source install/setup.bash
+```
+
+也可以使用项目构建脚本（脚本会检查推理运行时、MuJoCo 和仿真模型）：
+
+```bash
+source /opt/ros/humble/setup.bash
+./z_build.sh
+source install/setup.bash
+```
+
+只构建部署包：
+
+```bash
+colcon build --merge-install --symlink-install --packages-select z_deploy \
+  --cmake-args -DBUILD_TESTING=ON
 ```
 
 重新打开终端时，需要重新加载环境：
