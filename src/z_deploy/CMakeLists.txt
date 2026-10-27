@@ -13,6 +13,12 @@ find_package(z_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
 
+# Internal headers are included as <fsm/...>, <utils/...>, <types.hpp>, etc.
+# from these two roots; no symlinked include/z_deploy namespace is needed.
+set(Z_DEPLOY_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR}/core
+  ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 set(POLICY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../policy")
 set(INFERENCE_RUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../thirdparty/interface_runtime")
 
@@ -36,7 +42,7 @@ target_include_directories(z_deploy_joystick PUBLIC
 add_executable(z_deploy_main src/main.cpp)
 target_compile_definitions(z_deploy_main PRIVATE Z_POLICY_ROOT="${POLICY_ROOT}")
 target_include_directories(z_deploy_main PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${Z_DEPLOY_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}/library/joystick)
 ament_target_dependencies(z_deploy_main rclcpp std_srvs z_msgs)
 target_link_libraries(z_deploy_main yaml-cpp z_deploy_joystick Threads::Threads)
@@ -86,13 +92,13 @@ install(DIRECTORY ../../policy/ DESTINATION share/${PROJECT_NAME}/policy)
 if(BUILD_TESTING)
   enable_testing()
   add_executable(test_fsm test/test_fsm.cpp)
-  target_include_directories(test_fsm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_include_directories(test_fsm PRIVATE ${Z_DEPLOY_INCLUDE_DIRS})
   target_compile_definitions(test_fsm PRIVATE Z_DEPLOY_HAS_TORCH=0)
   target_link_libraries(test_fsm yaml-cpp Threads::Threads)
   add_test(NAME fsm COMMAND test_fsm)
 
   add_executable(test_policy_manager test/test_policy_manager.cpp)
-  target_include_directories(test_policy_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_include_directories(test_policy_manager PRIVATE ${Z_DEPLOY_INCLUDE_DIRS})
   target_compile_definitions(test_policy_manager PRIVATE Z_DEPLOY_HAS_TORCH=0)
   target_link_libraries(test_policy_manager yaml-cpp Threads::Threads)
   add_test(NAME policy_manager COMMAND test_policy_manager)

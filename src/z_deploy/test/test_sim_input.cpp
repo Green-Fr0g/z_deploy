@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <z_deploy/hardware/sim_interface.hpp>
+#include <hardware/sim_interface.hpp>
 
 namespace
 {

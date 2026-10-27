@@ -5,10 +5,10 @@
 #include <utility>
 #include <vector>
 
-#include <z_deploy/config_types.hpp>
-#include <z_deploy/input_types.hpp>
-#include <z_deploy/types.hpp>
-#include <z_deploy/utils/triple_buffer.hpp>
+#include <config_types.hpp>
+#include <input_types.hpp>
+#include <types.hpp>
+#include <utils/triple_buffer.hpp>
 
 // Robot hardware abstraction: flat state readback + a single command entry
 // point. Implementations (sim / real robot) only provide the transport hooks;

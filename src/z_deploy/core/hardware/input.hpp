@@ -7,11 +7,11 @@
 #include <string>
 #include <utility>
 
-#include <z_deploy/hardware/joystick.hpp>
-#include <z_deploy/hardware/keyboard.hpp>
-#include <z_deploy/input_types.hpp>
-#include <z_deploy/types.hpp>
-#include <z_deploy/utils/thread_timer.hpp>
+#include <hardware/joystick.hpp>
+#include <hardware/keyboard.hpp>
+#include <input_types.hpp>
+#include <types.hpp>
+#include <utils/thread_timer.hpp>
 
 // Both devices share one state. An active joystick owns buttons and axes
 // together; centered, released sticks/buttons allow keyboard control.

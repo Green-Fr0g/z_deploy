@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include <z_deploy/fsm/fsm_base.hpp>
+#include <fsm/fsm_base.hpp>
 
 class FsmManager
 {

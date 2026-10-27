@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 
-#include <z_deploy/policy/runtime/policy_backend.hpp>
+#include <policy/runtime/policy_backend.hpp>
 
 // Extension-based factory for PolicyBackend.
 // Built-ins: ".pt", ".onnx".

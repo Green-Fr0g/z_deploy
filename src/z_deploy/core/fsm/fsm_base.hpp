@@ -5,11 +5,11 @@
 #include <string>
 #include <utility>
 
-#include <z_deploy/config/config_loader.hpp>
-#include <z_deploy/hardware/hardware_base.hpp>
-#include <z_deploy/input_types.hpp>
-#include <z_deploy/policy/policy_manager.hpp>
-#include <z_deploy/types.hpp>
+#include <config/config_loader.hpp>
+#include <hardware/hardware_base.hpp>
+#include <input_types.hpp>
+#include <policy/policy_manager.hpp>
+#include <types.hpp>
 
 class FsmBase
 {

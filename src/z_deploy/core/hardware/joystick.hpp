@@ -11,8 +11,8 @@
 
 #include <joystick.hh>
 
-#include <z_deploy/input_types.hpp>
-#include <z_deploy/utils/thread_timer.hpp>
+#include <input_types.hpp>
+#include <utils/thread_timer.hpp>
 
 // Linux Xbox layout, sampled through library/joystick.
 class JoystickHandler

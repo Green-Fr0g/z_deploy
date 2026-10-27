@@ -15,16 +15,16 @@
 #include <utility>
 #include <vector>
 
-#include <z_deploy/command/motion_command.hpp>
-#include <z_deploy/config/config_loader.hpp>
-#include <z_deploy/config_types.hpp>
-#include <z_deploy/hardware/hardware_base.hpp>
-#include <z_deploy/policy/observation/obs_collection.hpp>
-#include <z_deploy/policy/runtime/policy_register.hpp>
-#include <z_deploy/tui/display.hpp>
-#include <z_deploy/utils/math.hpp>
-#include <z_deploy/utils/thread_timer.hpp>
-#include <z_deploy/utils/utils.hpp>
+#include <command/motion_command.hpp>
+#include <config/config_loader.hpp>
+#include <config_types.hpp>
+#include <hardware/hardware_base.hpp>
+#include <policy/observation/obs_collection.hpp>
+#include <policy/runtime/policy_register.hpp>
+#include <tui/display.hpp>
+#include <utils/math.hpp>
+#include <utils/thread_timer.hpp>
+#include <utils/utils.hpp>
 
 class PolicyManager
 {

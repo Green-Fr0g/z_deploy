@@ -6,13 +6,13 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <z_deploy/command/motion_command.hpp>
-#include <z_deploy/config/config_loader.hpp>
-#include <z_deploy/fsm/robot/g1/g1_fsm.hpp>
-#include <z_deploy/fsm/robot/g1_23/g1_23_fsm.hpp>
-#include <z_deploy/fsm/fsm_register.hpp>
-#include <z_deploy/hardware/hardware_sim.hpp>
-#include <z_deploy/policy/policy_manager.hpp>
+#include <command/motion_command.hpp>
+#include <config/config_loader.hpp>
+#include <fsm/robot/g1/g1_fsm.hpp>
+#include <fsm/robot/g1_23/g1_23_fsm.hpp>
+#include <fsm/fsm_register.hpp>
+#include <hardware/hardware_sim.hpp>
+#include <policy/policy_manager.hpp>
 
 namespace
 {

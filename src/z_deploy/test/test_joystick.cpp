@@ -8,7 +8,7 @@
 #include <thread>
 #include <unistd.h>
 
-#include <z_deploy/hardware/hardware_sim.hpp>
+#include <hardware/hardware_sim.hpp>
 
 namespace
 {

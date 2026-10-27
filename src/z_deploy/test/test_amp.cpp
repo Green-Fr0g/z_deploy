@@ -5,8 +5,8 @@
 #include <mutex>
 #include <stdexcept>
 
-#include <z_deploy/fsm/robot/g1/g1_fsm.hpp>
-#include <z_deploy/hardware/base_interface.hpp>
+#include <fsm/robot/g1/g1_fsm.hpp>
+#include <hardware/base_interface.hpp>
 
 namespace
 {

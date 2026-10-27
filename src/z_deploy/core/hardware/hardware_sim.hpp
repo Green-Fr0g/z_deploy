@@ -13,8 +13,8 @@
 #include <z_msgs/msg/joints_cmd.hpp>
 #include <z_msgs/msg/joints_data.hpp>
 
-#include <z_deploy/hardware/hardware_base.hpp>
-#include <z_deploy/hardware/input.hpp>
+#include <hardware/hardware_base.hpp>
+#include <hardware/input.hpp>
 
 // MuJoCo simulation robot backend.
 //

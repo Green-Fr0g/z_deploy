@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include <z_deploy/fsm/fsm_register.hpp>
-#include <z_deploy/tui/display.hpp>
-#include <z_deploy/utils/math.hpp>
+#include <fsm/fsm_register.hpp>
+#include <tui/display.hpp>
+#include <utils/math.hpp>
 
 namespace g1
 {

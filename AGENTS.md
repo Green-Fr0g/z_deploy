@@ -4,7 +4,7 @@
 
 - `src/simulation/robot_mujoco_sim/`: Python ROS 2 node, model loading, CLI, and native/Mjviser viewers. Configuration lives in `src/simulation/config/sim.yaml`; MJCF scenes and meshes live in `src/simulation/robots_model/`.
 - `src/z_msgs/msg/`: custom ROS message definitions.
-- `src/z_deploy/`: C++ deployment runtime, with headers under `include/z_deploy/`, entry point in `src/main.cpp`, and the Unitree SDK2 submodule under `library/unitree_sdk2/`.
+- `src/z_deploy/`: C++ deployment runtime, with headers under `core/` and public types under `include/`, entry point in `src/main.cpp`, and the Unitree SDK2 submodule under `library/unitree_sdk2/`.
 - Tests live in each package's `test/` directory. `scripts/` contains dependency setup helpers. Treat `build/`, `install/`, and `log/` as generated output.
 
 ## Build, Test, and Development Commands
@@ -28,7 +28,7 @@ Omit `--packages-up-to` to build everything once deployment dependencies are ava
 
 Use four-space indentation. Python modules, functions, and variables use `snake_case`; classes use `PascalCase`, and constants use `UPPER_SNAKE_CASE`. Follow nearby imports and type annotations.
 
-C++ uses C++17. Follow existing brace placement and local naming; deployment headers use `#pragma once` and `<z_deploy/...>` includes. Prefer lowercase `snake_case` filenames and `Z_` prefixes for project macros. No repository-wide formatter or linter configuration is present.
+C++ uses C++17. Follow existing brace placement and local naming; deployment headers use `#pragma once` and are included relative to the `core/` or `include/` header roots, for example `<fsm/fsm_base.hpp>`, `<utils/math.hpp>`, or `<types.hpp>`. No `include/z_deploy/` symlink tree is used. Prefer lowercase `snake_case` filenames and `Z_` prefixes for project macros. No repository-wide formatter or linter configuration is present.
 
 ## Testing Guidelines
 

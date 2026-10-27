@@ -7,8 +7,8 @@
 #include <unistd.h>
 #include <utility>
 
-#include <z_deploy/types.hpp>
-#include <z_deploy/utils/thread_timer.hpp>
+#include <types.hpp>
+#include <utils/thread_timer.hpp>
 
 
 class KeyboardHandler

@@ -9,9 +9,9 @@
 #include <string>
 #include <vector>
 
-#include <z_deploy/types.hpp>
-#include <z_deploy/utils/utils.hpp>
-#include <z_deploy/utils/math.hpp>
+#include <types.hpp>
+#include <utils/utils.hpp>
+#include <utils/math.hpp>
 
 class MotionCommand
 {

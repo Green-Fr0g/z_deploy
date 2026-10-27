@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <z_deploy/config_types.hpp>
+#include <config_types.hpp>
 
 #ifndef Z_DEPLOY_HAS_TORCH
 #if __has_include(<torch/script.h>)

@@ -14,8 +14,8 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include <z_deploy/config_types.hpp>
-#include <z_deploy/utils/utils.hpp>
+#include <config_types.hpp>
+#include <utils/utils.hpp>
 
 class ConfigError : public std::runtime_error
 {

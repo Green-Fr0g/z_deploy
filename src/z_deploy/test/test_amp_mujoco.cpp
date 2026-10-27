@@ -7,11 +7,11 @@
 #include <string>
 #include <vector>
 
-#include <z_deploy/config/config_loader.hpp>
-#include <z_deploy/policy/observation/obs_collection.hpp>
-#include <z_deploy/policy/runtime/policy_backend.hpp>
-#include <z_deploy/utils/math.hpp>
-#include <z_deploy/utils/utils.hpp>
+#include <config/config_loader.hpp>
+#include <policy/observation/obs_collection.hpp>
+#include <policy/runtime/policy_backend.hpp>
+#include <utils/math.hpp>
+#include <utils/utils.hpp>
 #include <core/frog_simulation_core.hpp>
 
 namespace

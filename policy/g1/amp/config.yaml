@@ -4,7 +4,7 @@
 # Model includes empirical observation normalization; feed raw observations.
 # Joint vectors below use policy.onnx metadata (exported to three decimals).
 g1/amp:
-  model_name: policy_2.onnx
+  model_name: policy.onnx
   decimation: 4  # base dt=0.005 s -> 200 Hz observations, 50 Hz policy, 5 ms between history frames
   observations: [ang_vel, gravity_vec, commands, dof_pos, dof_vel, actions]
   observations_dims_list: [3, 3, 3, 29, 29, 29]
@@ -13,8 +13,8 @@ g1/amp:
   num_policy_observations: 384
   clip_obs: 0.0  # disabled; training has no observation clipping
   clip_actions:
-    lower: -.inf
-    upper: .inf
+    lower: -100
+    upper: 100
   num_of_dofs: 29
   default_dof_pos: [-0.312, 0.000, 0.000, 0.669, -0.363, 0.000, -0.312, 0.000, 0.000, 0.669, -0.363, 0.000, 0.000, 0.000, 0.000, 0.200, 0.200, 0.000, 0.600, 0.000, 0.000, 0.000, 0.200, -0.200, 0.000, 0.600, 0.000, 0.000, 0.000]
   rl_kp: [99.098, 99.098, 40.179, 99.098, 28.501, 28.501, 99.098, 99.098, 40.179, 99.098, 28.501, 28.501, 40.179, 28.501, 28.501, 14.251, 14.251, 14.251, 14.251, 14.251, 8.611, 8.611, 14.251, 14.251, 14.251, 14.251, 14.251, 8.611, 8.611]

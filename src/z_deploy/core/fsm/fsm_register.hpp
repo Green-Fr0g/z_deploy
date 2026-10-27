@@ -5,8 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include <z_deploy/fsm/fsm_base.hpp>
-#include <z_deploy/fsm/fsm_manager.hpp>
+#include <fsm/fsm_base.hpp>
+#include <fsm/fsm_manager.hpp>
 
 class FsmFactory
 {

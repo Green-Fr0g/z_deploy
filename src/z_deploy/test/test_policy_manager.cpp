@@ -11,8 +11,8 @@
 #include <stdexcept>
 #include <thread>
 
-#include <z_deploy/fsm/robot/g1/g1_fsm.hpp>
-#include <z_deploy/fsm/robot/g1_23/g1_23_fsm.hpp>
+#include <fsm/robot/g1/g1_fsm.hpp>
+#include <fsm/robot/g1_23/g1_23_fsm.hpp>
 
 namespace
 {

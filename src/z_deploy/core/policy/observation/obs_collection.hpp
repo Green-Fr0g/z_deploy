@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include <z_deploy/config_types.hpp>
+#include <config_types.hpp>
 
 // Stores observation terms, maintains history frames, and flattens to policy input.
 // push() advances history once per observation tick; indices count observation steps.
