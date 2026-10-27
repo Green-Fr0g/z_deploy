@@ -133,6 +133,13 @@ public:
         return policy_active_ && motion_.is_loaded() && motion_time_.load() >= motion_.duration();
     }
 
+    double motion_progress() const
+    {
+        if (!policy_active_ || !motion_.is_loaded() || motion_.duration() <= 0.0)
+            return 0.0;
+        return std::clamp(motion_time_.load() / motion_.duration(), 0.0, 1.0);
+    }
+
     // Latest sampled command, after directional scaling and observation clipping.
     VelocityCmd velocity_command() const { return observations_.velocity_command(); }
 

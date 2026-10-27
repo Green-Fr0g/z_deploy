@@ -223,10 +223,17 @@ namespace g1
         {
             FsmState::enter();
             tui::message("INFO", "Enter G1 Dance102");
-            ctx_.policy.start_policy("dance_102");
+            progress_ = -1.0;
+            if (ctx_.policy.start_policy("dance_102"))
+                update_progress();
         }
 
-        void run() override { ctx_.policy.run_policy(); }
+        void run() override
+        {
+            ctx_.policy.run_policy();
+            if (ctx_.policy.policy_active())
+                update_progress();
+        }
 
         void exit() override
         {
@@ -257,6 +264,19 @@ namespace g1
                 return name_;
             }
         }
+
+    private:
+        void update_progress()
+        {
+            const auto progress = ctx_.policy.motion_progress();
+            if (progress >= 1.0 || progress_ < 0.0 || progress - progress_ >= 0.01)
+            {
+                tui::progress(progress, 1.0, "Dance 102");
+                progress_ = progress;
+            }
+        }
+
+        double progress_{-1.0};
     };
 
     class AmpLocomotion : public FsmState

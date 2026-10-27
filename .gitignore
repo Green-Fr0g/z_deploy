@@ -9,3 +9,5 @@ wheels/
 install/
 log/
 .pytest_cache
+
+thirdparty/*
