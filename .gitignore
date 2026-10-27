@@ -10,4 +10,5 @@ install/
 log/
 .pytest_cache
 
-thirdparty/*
+# Third-party dependencies are downloaded or managed outside the source tree.
+thirdparty/
