@@ -40,7 +40,7 @@ namespace g1
                 cmd_.position[i] = i < position.size() ? position[i] : 0.0F;
                 cmd_.velocity[i] = cmd_.torque[i] = 0.0F;
                 cmd_.kp[i] = 0.0F;
-                cmd_.kd[i] = 8.0F;
+                cmd_.kd[i] = 5.0F;
             }
             ctx_.robot.set_joint_command(cmd_);
         }
