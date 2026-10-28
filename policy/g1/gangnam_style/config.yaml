@@ -1,6 +1,6 @@
 g1/gangnam_style:
   decimation: 4
-  motion_file: G1_gangnam_style_V01.bvh_60hz.csv
+  motion_config: motion.yaml
   model_name: policy.pt
   observations: [whole_body_tracking/motion_command, whole_body_tracking/motion_anchor_ori_b, ang_vel, dof_pos, dof_vel, actions]
   observations_dims_list: [58, 6, 3, 29, 29, 29]

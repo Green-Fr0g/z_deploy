@@ -38,4 +38,4 @@ g1/zlocomotion:
   clip_actions:
     lower: -.inf
     upper: .inf
-  commands_scale: [0.1, 0.1, 0.1, 0.1, 0.5, 0.5]
+  commands_scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
