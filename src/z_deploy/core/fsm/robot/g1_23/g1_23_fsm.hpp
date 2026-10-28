@@ -359,7 +359,7 @@ public:
         return {"Passive", "Disabled", "GetUp", "RLLocomotion", "Dance", "Mimic"};
     }
 
-    std::string initial_state() const override { return "Passive"; }
+    std::string initial_state() const override { return "Disabled"; }
 };
 
 } // namespace g1_23

@@ -641,7 +641,7 @@ namespace g1
                     "Dance102", "AmpZlab", "Mimic", "ZLocomotion"};
         }
 
-        std::string initial_state() const override { return "Passive"; }
+        std::string initial_state() const override { return "Disabled"; }
     };
 
 } // namespace g1

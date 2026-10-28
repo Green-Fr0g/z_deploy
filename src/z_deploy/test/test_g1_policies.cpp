@@ -87,7 +87,7 @@ private:
     TorchPolicyBackend backend_;
 };
 
-void check_policy(const std::string &id, int input_dim, bool tracking)
+void check_policy(const std::string &id, int input_dim, bool tracking, double motion_fps = 0.0)
 {
     PolicyConfigLoader config;
     require(config.load(Z_G1_POLICY_ROOT, "g1", id), "Cannot load G1 policy " + id);
@@ -148,6 +148,9 @@ void check_policy(const std::string &id, int input_dim, bool tracking)
         require(motion.size() > 1 && motion.joint_count() == 29 && motion.duration() > 0.0 &&
                     finite(motion.sample(0.0).joint_position),
                 id + ": invalid reference motion");
+        if (motion_fps > 0.0)
+            require(std::fabs(motion.dt() - 1.0 / motion_fps) < 1e-9,
+                    id + ": reference motion playback rate changed");
         float norm_squared = 0.0F;
         for (std::size_t i = 58; i < 64; ++i)
             norm_squared += snapshot->first_observation[i] * snapshot->first_observation[i];
@@ -162,6 +165,7 @@ int main()
 {
     try
     {
+        check_policy("dance_102", 154, true, 50.0);
         check_policy("gangnam_style", 154, true);
         check_policy("amp_zlab", 384, false);
         check_policy("mimic", 154, true);

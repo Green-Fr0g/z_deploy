@@ -1,7 +1,9 @@
 motion_data:
   robot_name: g1
   csv_file: G1_Take_102.bvh_60hz.csv
-  csv_fps: 60.0
+  # Preserve the validated deployment rate: one CSV frame per 0.005 * 4 s policy step.
+  # The source filename says 60 Hz, but the original runtime played it at 50 Hz.
+  csv_fps: 50.0
   root_quat_order: xyzw
   csv_joint_names: [
       left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_joint, left_ankle_pitch_joint,

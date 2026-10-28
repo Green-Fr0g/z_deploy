@@ -286,7 +286,7 @@ public:
         return {"Passive", "Disabled", "GetUp", "RLLocomotion", "Mimic"};
     }
 
-    std::string initial_state() const override { return "Passive"; }
+    std::string initial_state() const override { return "Disabled"; }
 };
 
 } // namespace dr02

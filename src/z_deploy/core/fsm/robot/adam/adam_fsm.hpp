@@ -217,7 +217,7 @@ public:
         return {"Passive", "Disabled", "GetUp", "RLLocomotion"};
     }
 
-    std::string initial_state() const override { return "Disabled"; }
+    std::string initial_state() const override { return "Passive"; }
 };
 
 } // namespace adam
