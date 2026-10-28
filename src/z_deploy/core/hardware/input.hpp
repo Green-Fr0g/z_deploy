@@ -67,13 +67,20 @@ private:
 
     static joybutton key_button(Keyboard key)
     {
+        // Policy shortcuts: 1-4 = LB + up/down/left/right,
+        //                   5-8 = RB + up/down/left/right.
         switch (key)
         {
         case Keyboard::Num0: return joybutton::A;
         case Keyboard::P: return joybutton::LB_X;
-        case Keyboard::Num1: return joybutton::RB_DPadUp;
-        case Keyboard::Num2: return joybutton::RB_DPadRight;
-        case Keyboard::Num3: return joybutton::RB_DPadDown;
+        case Keyboard::Num1: return joybutton::LB_DPadUp;
+        case Keyboard::Num2: return joybutton::LB_DPadDown;
+        case Keyboard::Num3: return joybutton::LB_DPadLeft;
+        case Keyboard::Num4: return joybutton::LB_DPadRight;
+        case Keyboard::Num5: return joybutton::RB_DPadUp;
+        case Keyboard::Num6: return joybutton::RB_DPadDown;
+        case Keyboard::Num7: return joybutton::RB_DPadLeft;
+        case Keyboard::Num8: return joybutton::RB_DPadRight;
         case Keyboard::R: return joybutton::RB_Y;
         case Keyboard::Enter: return joybutton::RB_X;
         case Keyboard::Up: return joybutton::DPadUp;

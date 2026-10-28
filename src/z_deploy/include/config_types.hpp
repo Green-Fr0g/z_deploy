@@ -30,7 +30,8 @@ struct MotionMeta
 {
     std::string robot_name;
     std::string csv_file;
-    double csv_fps{60.0};
+    // CSV frame rate; 0 means unspecified and the policy step rate is used.
+    double csv_fps{0.0};
     std::string root_quat_order{"xyzw"};
     std::vector<std::string> csv_joint_names;
 };

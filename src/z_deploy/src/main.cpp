@@ -8,6 +8,8 @@
 
 #include <command/motion_command.hpp>
 #include <config/config_loader.hpp>
+#include <fsm/robot/adam/adam_fsm.hpp>
+#include <fsm/robot/dr02/dr02_fsm.hpp>
 #include <fsm/robot/g1/g1_fsm.hpp>
 #include <fsm/robot/g1_23/g1_23_fsm.hpp>
 #include <fsm/fsm_register.hpp>
@@ -27,7 +29,7 @@ void signal_handler(int)
 void usage(const char *program)
 {
     std::cout << "Usage: " << program
-              << " --robot <g1|g1_23> --mode <sim|real>\n";
+              << " --robot <g1|g1_23|dr02|adam> --mode <sim|real>\n";
 }
 
 std::filesystem::path policy_root()

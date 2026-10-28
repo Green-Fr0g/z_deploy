@@ -353,7 +353,7 @@ private:
     }
 
     // Policy vectors paired with joint_mapping are policy-ordered. RobotConfig
-    // stores hardware order, so those vectors are scattered onto motor indices.
+    // stores hardware order; update mapped motors and preserve all others.
     static RobotConfig overlay_robot(RobotConfig base, const YAML::Node &node)
     {
         if (node["dt"])
@@ -369,14 +369,29 @@ private:
             utils::fill_identity(policy_mapping, num);
         }
 
+        const auto overlay_mapped = [&](const auto &values, auto &field)
+        {
+            field.resize(num);
+            const auto count = std::min(values.size(), policy_mapping.size());
+            for (std::size_t i = 0; i < count; ++i)
+            {
+                const int index = policy_mapping[i];
+                if (index >= 0 && static_cast<std::size_t>(index) < num)
+                    field[static_cast<std::size_t>(index)] = values[i];
+            }
+        };
+
         auto overlay_float =
             [&](const char *key, std::vector<float> &field, std::optional<float> fill = std::nullopt)
         {
             if (!node[key])
                 return;
             auto values = sequence<float>(node, key);
-            utils::expand_to_num(values, num, fill);
-            field = has_mapping ? utils::scatter(values, policy_mapping, num) : std::move(values);
+            utils::expand_to_num(values, has_mapping ? policy_mapping.size() : num, fill);
+            if (has_mapping)
+                overlay_mapped(values, field);
+            else
+                field = std::move(values);
         };
 
         auto overlay_names = [&](const char *key, std::vector<std::string> &field)
@@ -384,7 +399,10 @@ private:
             if (!node[key])
                 return;
             auto values = sequence<std::string>(node, key);
-            field = has_mapping ? utils::scatter(values, policy_mapping, num) : std::move(values);
+            if (has_mapping)
+                overlay_mapped(values, field);
+            else
+                field = std::move(values);
         };
 
         overlay_float("fixed_kp", base.fixed_kp);

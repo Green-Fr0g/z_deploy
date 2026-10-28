@@ -111,6 +111,8 @@ class RobotModel:
             raise ValueError(
                 'MuJoCo model is missing joint sensors: ' + ', '.join(missing_joint_sensors))
 
+        self._joint_commands: list[tuple[float, float, float, float, float]] = []
+
         # Models with an explicit home keyframe (for example DR02's floating
         # base) should start in that safe, collision-free pose as well as use
         # it when the viewer or ROS reset service is invoked.
@@ -155,28 +157,39 @@ class RobotModel:
             )
 
     def apply_joint_commands(self, commands: Sequence[object]) -> None:
-        """Write feed-forward torque plus optional PD terms to the actuators.
+        """Store joint setpoints and apply their current feed-forward/PD torque.
 
         ``commands`` items must expose ``torque``, ``kp``, ``position``, ``kd``
         and ``velocity``, matching ``z_msgs/msg/JointCmd``.
+        The setpoints are held between ROS messages; PD is recomputed at every
+        physics step instead of holding a stale torque until the next message.
         """
-        for index in range(min(len(commands), self.num_actuators)):
-            command = commands[index]
+        self._joint_commands = [
+            (float(command.torque), float(command.kp), float(command.position),
+             float(command.kd), float(command.velocity))
+            for command in commands[:self.num_actuators]
+        ]
+        self._update_joint_control()
 
-            torque = float(command.torque)
-            if command.kp:
+    def _update_joint_control(self) -> None:
+        for index, (feedforward, kp, target_position, kd, target_velocity) in enumerate(
+                self._joint_commands):
+            torque = feedforward
+            if kp:
                 position = float(self._sensor_values(self._joint_sensor_addresses[index][0])[0])
-                torque += float(command.kp) * (float(command.position) - position)
-            if command.kd:
+                torque += kp * (target_position - position)
+            if kd:
                 velocity = float(self._sensor_values(self._joint_sensor_addresses[index][1])[0])
-                torque += float(command.kd) * (float(command.velocity) - velocity)
+                torque += kd * (target_velocity - velocity)
 
             self.data.ctrl[index] = torque
 
     def zero_control(self) -> None:
+        self._joint_commands.clear()
         self.data.ctrl[:] = 0.0
 
     def step(self) -> None:
+        self._update_joint_control()
         mujoco.mj_step(self.model, self.data)
 
     def body_pose(self, name: str) -> tuple[np.ndarray, np.ndarray] | None:
@@ -195,6 +208,7 @@ class RobotModel:
             mujoco.mj_resetDataKeyframe(self.model, self.data, key_id)
         else:
             mujoco.mj_resetData(self.model, self.data)
+        self.zero_control()
         mujoco.mj_forward(self.model, self.data)
 
     def print_scene_information(self) -> None:

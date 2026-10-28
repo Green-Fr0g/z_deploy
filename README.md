@@ -111,12 +111,65 @@ ros2 run robot_mujoco_sim robot_mujoco_sim --robot h2 --scene empty.xml --viewer
 ros2 run robot_mujoco_sim robot_mujoco_sim --help
 ```
 
-`--scene` 会在 `robots_model/<robot>_mjcf/mjcf/` 下解析；不带 `.xml` 后缀时会自动补上。例如：
+`--scene` 优先在 `robots_model/<robot>_mjcf/mjcf/` 下解析，也支持模型根目录；不带 `.xml` 后缀时会自动补上。例如：
 
 ```text
 --robot h2 --scene empty
 → robots_model/h2_mjcf/mjcf/empty.xml
 ```
+
+### Adam
+
+当前 `sim.yaml` 默认选择 Adam。`adam_mjcf/empty.xml` 使用 `robot_fix.xml`，
+包含地面、27 个力矩执行器、关节传感器和 IMU，Reset 回到默认站立姿态。
+物理步进使用 2000 Hz，避免低惯量手腕在显式 PD 下振荡，状态和 IMU 发布保持 200 Hz。
+仿真 ROS 顺序与 `policy/adam/base.yaml` 一致，策略通过 `joint_mapping` 对接。
+
+分别在两个已加载 ROS 环境的终端启动：
+
+```bash
+ros2 run robot_mujoco_sim robot_mujoco_sim --robot adam --scene empty.xml --viewer mjviser
+ros2 run z_deploy z_deploy_main --robot adam --mode sim
+```
+
+部署端从 `Disabled` 开始：按 `P` 进入阻尼模式，按 `0` 用两秒插值到默认姿态，
+完成后按 `1` 启动 locomotion；策略运行时按 `P` 返回阻尼模式。
+策略为 `policy/adam/locomotion/policy.pt`，输入 450 维、输出 27 维，推理 50 Hz，
+每个观测项按 `[4, 3, 2, 1, 0]` 堆叠五个推理步的历史。
+
+## 部署按键
+
+数字键按下表映射为手柄组合键，具体策略仍由各机器人的状态机绑定：
+
+| 数字键 | 手柄组合键 | 数字键 | 手柄组合键 |
+| --- | --- | --- | --- |
+| `1` | LB + 上 | `5` | RB + 上 |
+| `2` | LB + 下 | `6` | RB + 下 |
+| `3` | LB + 左 | `7` | RB + 左 |
+| `4` | LB + 右 | `8` | RB + 右 |
+
+已有基础按键保持原映射：`0` 对应 A，`P` 对应 LB+X，`R` 重置仿真，
+Enter 暂停/继续仿真。`W/S/A/D` 调整平移指令，`Q/E` 调整转向指令，
+Space 清零速度；普通方向键仍对应未加 LB/RB 的方向键。
+没有绑定策略的组合键保持当前状态。所有机器人状态机的 `check_change()`
+使用 `if` 判断，保留原有的按键边沿检测、站立完成限制和策略失败回退。
+
+G1 的策略绑定如下，站立完成后可进入，运行中也可用这些组合键互相切换：
+
+| 数字键 | 手柄组合键 | 策略目录 |
+| --- | --- | --- |
+| `1` | LB + 上 | `g1/locomotion` |
+| `2` | LB + 下 | `g1/amp` |
+| `3` | LB + 左 | `g1/gangnam_style` |
+| `4` | LB + 右 | `g1/dance_102` |
+| `5` | RB + 上 | `g1/amp_zlab` |
+| `6` | RB + 下 | `g1/mimic` |
+| `7` | RB + 左 | `g1/zlocomotion` |
+| `8` | RB + 右 | 预留，保持当前状态 |
+
+`gangnam_style`、`dance_102`、`mimic` 播放结束后自动返回 `locomotion`。
+AMP 和 AMP Zlab 使用 LB+X 返回 Passive、Y 返回 GetUp；
+其余 G1 策略使用 Y 返回 Passive、RB+A 返回 GetUp。
 
 ## Viewer 说明
 
@@ -141,9 +194,9 @@ Mjviser 自带 Pause / Play、Step、Reset、Speed、Keyframe 以及相机和场
 配置文件位于 `src/simulation/config/sim.yaml`：
 
 ```yaml
-robot: "h2"
+robot: "adam"
 scene: "empty.xml"
-sim_frequency: 500.0
+sim_frequency: 2000.0
 state_publish_frequency: 200.0
 imu_publish_frequency: 200.0
 command_timeout: 0.25

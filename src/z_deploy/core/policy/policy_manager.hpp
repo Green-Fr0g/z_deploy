@@ -59,12 +59,17 @@ public:
         const auto &motion_meta = config_.motion();
         const auto &policy = config_.policy();
         const auto &robot = config_.robot();
-        const double motion_fps = robot.control_dt > 0.0 && policy.decimation > 0
-                                      ? 1.0 / (robot.control_dt * policy.decimation)
-                                      : motion_meta.csv_fps;
+        const double inference_dt = robot.control_dt * policy.decimation;
+        const double motion_fps = motion_meta.csv_fps > 0.0
+                                      ? motion_meta.csv_fps
+                                      : (inference_dt > 0.0 ? 1.0 / inference_dt : 0.0);
+        // Named CSVs may include joints outside the policy action subset.
+        const auto motion_joint_count = motion_meta.csv_joint_names.empty()
+                                            ? static_cast<std::size_t>(policy.dof)
+                                            : motion_meta.csv_joint_names.size();
         if (!motion_meta.csv_file.empty() &&
             !motion_.load(config_.motion_csv_path(),
-                          static_cast<std::size_t>(policy.dof),
+                          motion_joint_count,
                           motion_fps,
                           motion_meta.root_quat_order,
                           motion_meta.csv_joint_names,
@@ -141,7 +146,7 @@ public:
     }
 
     // Latest sampled command, after directional scaling and observation clipping.
-    VelocityCmd velocity_command() const { return observations_.velocity_command(); }
+    VelocityCmd velocity_command() const { return command_snapshot_.velocity_command(); }
 
 private:
     // One observation frame, owned exclusively by the sampling worker.
@@ -152,34 +157,21 @@ private:
         std::vector<float> action;
     };
 
-    // Latest complete observation and its consumption cursor share one lock.
-    struct ObservationBuffer
+    // Latest command snapshot for the TUI. The observation history lives in
+    // ObsCollection and is advanced by the inference worker, so the sampled
+    // frame only needs to stay fresh.
+    struct CommandSnapshot
     {
         void reset()
         {
             std::lock_guard<std::mutex> lock(mutex);
-            values.clear();
             command = {};
-            sequence  = 0;
-            consumed_sequence = 0;
         }
 
-        void publish(const std::vector<float> &observation, const VelocityCmd &velocity)
+        void publish(const VelocityCmd &velocity)
         {
             std::lock_guard<std::mutex> lock(mutex);
-            values = observation;
             command = velocity;
-            ++sequence;
-        }
-
-        bool consume(std::vector<float> &observation)
-        {
-            std::lock_guard<std::mutex> lock(mutex);
-            if (sequence == consumed_sequence)
-                return false;
-            observation = values;
-            consumed_sequence = sequence;
-            return true;
         }
 
         VelocityCmd velocity_command() const
@@ -190,10 +182,7 @@ private:
 
     private:
         mutable std::mutex mutex;
-        std::vector<float> values;
         VelocityCmd command;
-        std::uint64_t sequence{0};
-        std::uint64_t consumed_sequence{0};
     };
 
     // A single action snapshot serves the controller and observation worker.
@@ -324,9 +313,13 @@ private:
     // Called only with both workers stopped, before configuring or restarting.
     void reset_observation()
     {
-        obs_.reset();
+        frame_sampled_.store(false);
+        {
+            std::lock_guard<std::mutex> lock(obs_mutex_);
+            obs_.reset();
+        }
         sample_ = {};
-        observations_.reset();
+        command_snapshot_.reset();
     }
 
     RobotCommand target_command() const
@@ -391,15 +384,34 @@ private:
             sample_.command.yaw = std::clamp(sample_.command.yaw, -limit, limit);
         }
         sample_.action = actions_.read();
+        // The sampling worker only refreshes the newest frame; the inference
+        // worker commits it to the history buffer.
+        std::lock_guard<std::mutex> lock(obs_mutex_);
         collect_obs();
     }
 
-    // Advance history at dt and publish one complete flattened observation.
+    // Refresh the newest frame at dt. History advances on inference ticks.
     void on_observation_tick()
     {
         sample_observation();
-        obs_.push();
-        const auto &observation = obs_.value();
+        frame_sampled_.store(true);
+        command_snapshot_.publish(sample_.command);
+    }
+
+    // Commit the newest frame to the observation history, then release the lock
+    // before model execution. Slow inference never blocks sampling and never
+    // leaves a stale frame in the history.
+    void on_infer_tick()
+    {
+        if (!frame_sampled_.load())
+            return; // Wait until the sampling worker produced the first frame.
+
+        std::vector<float> observation;
+        {
+            std::lock_guard<std::mutex> lock(obs_mutex_);
+            obs_.push();
+            observation = obs_.value();
+        }
         if (observation.size() != static_cast<std::size_t>(policy_.input_dim))
         {
             if (!observation_failed_.exchange(true))
@@ -408,16 +420,6 @@ private:
             return;
         }
         observation_failed_.store(false);
-        observations_.publish(observation, sample_.command);
-    }
-
-    // Copy the latest snapshot, then release the lock before model execution.
-    // Slow inference never blocks sampling or queues up older observations.
-    void on_infer_tick()
-    {
-        std::vector<float> observation;
-        if (!observations_.consume(observation))
-            return; // Wait for the first frame, or skip an unchanged frame.
 
         auto next = actions_.read();
         const auto expected_size = next.size();
@@ -560,11 +562,16 @@ private:
     RobotConfig robot_cfg_;
     PolicyConfig policy_;
     ObsCollection obs_;
-    ObservationBuffer observations_;
+    // Guards the current frame and history shared by the sampling and inference
+    // workers.
+    std::mutex obs_mutex_;
+    CommandSnapshot command_snapshot_;
     std::unique_ptr<PolicyBackend> backend_;
     std::unordered_map<std::string, ObsFn> obs_fns_;
     ActionBuffer actions_;
     std::atomic<double> motion_time_{0.0};
+    // Set once the sampling worker refreshed at least one frame since reset.
+    std::atomic<bool> frame_sampled_{false};
     bool ready_{false};
     std::atomic<bool> infer_failed_{false};
     std::atomic<bool> observation_failed_{false};

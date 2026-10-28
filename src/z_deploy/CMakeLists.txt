@@ -91,17 +91,42 @@ install(DIRECTORY ../../policy/ DESTINATION share/${PROJECT_NAME}/policy)
 
 if(BUILD_TESTING)
   enable_testing()
+  add_executable(test_input test/test_input.cpp)
+  target_include_directories(test_input PRIVATE
+    ${Z_DEPLOY_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/library/joystick)
+  target_link_libraries(test_input z_deploy_joystick Threads::Threads)
+  add_test(NAME input COMMAND test_input)
+
   add_executable(test_fsm test/test_fsm.cpp)
   target_include_directories(test_fsm PRIVATE ${Z_DEPLOY_INCLUDE_DIRS})
   target_compile_definitions(test_fsm PRIVATE Z_DEPLOY_HAS_TORCH=0)
   target_link_libraries(test_fsm yaml-cpp Threads::Threads)
   add_test(NAME fsm COMMAND test_fsm)
+  add_test(NAME adam_fsm COMMAND test_fsm adam)
 
   add_executable(test_policy_manager test/test_policy_manager.cpp)
   target_include_directories(test_policy_manager PRIVATE ${Z_DEPLOY_INCLUDE_DIRS})
   target_compile_definitions(test_policy_manager PRIVATE Z_DEPLOY_HAS_TORCH=0)
   target_link_libraries(test_policy_manager yaml-cpp Threads::Threads)
   add_test(NAME policy_manager COMMAND test_policy_manager)
+
+  if(Torch_FOUND)
+    add_executable(test_adam_policy test/test_adam_policy.cpp)
+    target_include_directories(test_adam_policy PRIVATE ${Z_DEPLOY_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})
+    target_compile_definitions(test_adam_policy PRIVATE
+      Z_DEPLOY_HAS_TORCH=1 Z_DEPLOY_HAS_ONNX=0 Z_ADAM_POLICY_ROOT="${POLICY_ROOT}")
+    target_compile_options(test_adam_policy PRIVATE ${TORCH_CXX_FLAGS})
+    target_link_libraries(test_adam_policy yaml-cpp ${TORCH_LIBRARIES} Threads::Threads)
+    add_test(NAME adam_policy COMMAND test_adam_policy)
+
+    add_executable(test_g1_policies test/test_g1_policies.cpp)
+    target_include_directories(test_g1_policies PRIVATE ${Z_DEPLOY_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})
+    target_compile_definitions(test_g1_policies PRIVATE
+      Z_DEPLOY_HAS_TORCH=1 Z_DEPLOY_HAS_ONNX=0 Z_G1_POLICY_ROOT="${POLICY_ROOT}")
+    target_compile_options(test_g1_policies PRIVATE ${TORCH_CXX_FLAGS})
+    target_link_libraries(test_g1_policies yaml-cpp ${TORCH_LIBRARIES} Threads::Threads)
+    add_test(NAME g1_policies COMMAND test_g1_policies)
+  endif()
 endif()
 
 ament_package()

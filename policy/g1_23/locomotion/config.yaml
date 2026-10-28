@@ -4,6 +4,9 @@ g1_23/locomotion:
   observation_decimation: 4
   observations: [ang_vel, gravity_vec, commands, dof_pos, dof_vel, actions]
   observations_dims_list: [3, 3, 3, 23, 23, 23]
+  # History indices count inference steps: the sampled frame is committed once
+  # per policy step (dt x decimation = 20 ms), so [4, 3, 2, 1, 0] is the trained
+  # 0/20/40/60/80 ms window with history_length 5.
   observations_history: [4, 3, 2, 1, 0]
   observations_history_priority: term
   num_policy_observations: 390
@@ -25,12 +28,11 @@ g1_23/locomotion:
       0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25,
       0.25, 0.25, 0.25, 0.25, 0.25
     ]
-  waist_joint_indices: [12]
   ang_vel_scale: 0.2
   dof_pos_scale: 1.0
   dof_vel_scale: 0.05
   clip_obs: 0.0
   clip_actions:
-    lower: -.inf
-    upper: .inf
+    lower: -100
+    upper: 100
   commands_scale: [1.5, 1.0, 1.0, 1.0, 1.0, 1.0]

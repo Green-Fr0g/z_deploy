@@ -1,0 +1,13 @@
+motion_data:
+  robot_name: dr02
+  csv_file: reference.csv
+  csv_fps: 50.0
+  root_quat_order: xyzw
+  csv_joint_names: [
+      left_hip_y_joint, left_hip_x_joint, left_hip_z_joint, left_knee_joint, left_ankle_y_joint, left_ankle_x_joint,
+      right_hip_y_joint, right_hip_x_joint, right_hip_z_joint, right_knee_joint, right_ankle_y_joint,
+      right_ankle_x_joint, waist_z_joint, waist_x_joint, waist_y_joint, left_shoulder_y_joint, left_shoulder_x_joint,
+      left_shoulder_z_joint, left_elbow_joint, left_wrist_z_joint, left_wrist_y_joint, left_wrist_x_joint,
+      neck_z_joint, neck_y_joint, right_shoulder_y_joint, right_shoulder_x_joint, right_shoulder_z_joint,
+      right_elbow_joint, right_wrist_z_joint, right_wrist_y_joint, right_wrist_x_joint
+    ]

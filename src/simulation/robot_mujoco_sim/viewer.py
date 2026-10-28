@@ -51,6 +51,7 @@ def _mujoco_camera_offset(azimuth: float, elevation: float,
 
 
 CAMERA_FOLLOW_BODY_REGISTRY: dict[str, str] = {
+    'adam': 'torso_link',
     'h2': 'torso_link',
     'g1': 'torso_link',
     'g1_23': 'torso_link',
@@ -62,6 +63,7 @@ CAMERA_FOLLOW_BODY_REGISTRY: dict[str, str] = {
 # The current robot models use the same upper-body link for both features, but
 # changing camera framing must not move the elastic-band force to another link.
 ELASTIC_BAND_BODY_REGISTRY: dict[str, str] = {
+    'adam': 'torso_link',
     'h2': 'torso_link',
     'g1': 'torso_link',
     'g1_23': 'torso_link',

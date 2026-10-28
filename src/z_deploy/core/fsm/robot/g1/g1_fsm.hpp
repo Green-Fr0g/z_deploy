@@ -14,10 +14,12 @@
 namespace g1
 {
 
-    // A -> GetUp, LB+X -> Passive, RB+DPadUp -> RLLocomotion.
-    // RB+DPadRight -> Dance102, RB+DPadDown -> AMP. LB combinations are
-    // accepted as a compatibility alias for older controller mappings.
-    // B enters Disabled from Passive; A or LB+X returns Disabled to Passive.
+    // Policy shortcuts (keyboard 1-8):
+    // LB + Up/Down/Left/Right -> RLLocomotion / AMP / GangnamStyle / Dance102.
+    // RB + Up/Down/Left/Right -> AmpZlab / Mimic / ZLocomotion / reserved.
+    // Passive: A / RB+A -> GetUp, Y -> Disabled; Disabled: Y -> Passive.
+    // GetUp: LB+X -> Passive. RLLocomotion / Dance102: Y -> Passive, RB+A -> GetUp.
+    // AMP: LB+X -> Passive, Y -> GetUp.
 
     class Passive : public FsmState
     {
@@ -134,20 +136,21 @@ namespace g1
                 return "Passive";
             if (percent_ < 1.0F)
                 return name_; // Consume and ignore policy requests until standing is complete.
-            switch (current_button_)
-            {
-            case joybutton::RB_DPadUp:
-            case joybutton::LB_DPadUp:
+            if (current_button_ == joybutton::LB_DPadUp)
                 return "RLLocomotion";
-            case joybutton::RB_DPadRight:
-            case joybutton::LB_DPadRight:
-                return "Dance102";
-            case joybutton::RB_DPadDown:
-            case joybutton::LB_DPadDown:
+            if (current_button_ == joybutton::LB_DPadDown)
                 return "AMP";
-            default:
-                return name_;
-            }
+            if (current_button_ == joybutton::LB_DPadLeft)
+                return "GangnamStyle";
+            if (current_button_ == joybutton::LB_DPadRight)
+                return "Dance102";
+            if (current_button_ == joybutton::RB_DPadUp)
+                return "AmpZlab";
+            if (current_button_ == joybutton::RB_DPadDown)
+                return "Mimic";
+            if (current_button_ == joybutton::RB_DPadLeft)
+                return "ZLocomotion";
+            return name_;
         }
 
     private:
@@ -196,21 +199,25 @@ namespace g1
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
-            switch (current_button_)
-            {
-            case joybutton::Y:
+            if (current_button_ == joybutton::Y)
                 return "Passive";
-            case joybutton::RB_A:
+            if (current_button_ == joybutton::RB_A)
                 return "GetUp";
-            case joybutton::RB_DPadRight:
-            case joybutton::LB_DPadRight:
-                return "Dance102";
-            case joybutton::RB_DPadDown:
-            case joybutton::LB_DPadDown:
+            if (current_button_ == joybutton::LB_DPadUp)
+                return "RLLocomotion";
+            if (current_button_ == joybutton::LB_DPadDown)
                 return "AMP";
-            default:
-                return name_;
-            }
+            if (current_button_ == joybutton::LB_DPadLeft)
+                return "GangnamStyle";
+            if (current_button_ == joybutton::LB_DPadRight)
+                return "Dance102";
+            if (current_button_ == joybutton::RB_DPadUp)
+                return "AmpZlab";
+            if (current_button_ == joybutton::RB_DPadDown)
+                return "Mimic";
+            if (current_button_ == joybutton::RB_DPadLeft)
+                return "ZLocomotion";
+            return name_;
         }
     };
 
@@ -248,21 +255,25 @@ namespace g1
                 return "Passive";
             if (ctx_.policy.motion_finished())
                 return "RLLocomotion";
-            switch (current_button_)
-            {
-            case joybutton::Y:
+            if (current_button_ == joybutton::Y)
                 return "Passive";
-            case joybutton::RB_A:
+            if (current_button_ == joybutton::RB_A)
                 return "GetUp";
-            case joybutton::RB_DPadUp:
-            case joybutton::LB_DPadUp:
+            if (current_button_ == joybutton::LB_DPadUp)
                 return "RLLocomotion";
-            case joybutton::RB_DPadDown:
-            case joybutton::LB_DPadDown:
+            if (current_button_ == joybutton::LB_DPadDown)
                 return "AMP";
-            default:
-                return name_;
-            }
+            if (current_button_ == joybutton::LB_DPadLeft)
+                return "GangnamStyle";
+            if (current_button_ == joybutton::LB_DPadRight)
+                return "Dance102";
+            if (current_button_ == joybutton::RB_DPadUp)
+                return "AmpZlab";
+            if (current_button_ == joybutton::RB_DPadDown)
+                return "Mimic";
+            if (current_button_ == joybutton::RB_DPadLeft)
+                return "ZLocomotion";
+            return name_;
         }
 
     private:
@@ -316,21 +327,281 @@ namespace g1
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
-            switch (current_button_)
-            {
-            case joybutton::LB_X:
+            if (current_button_ == joybutton::LB_X)
                 return "Passive";
-            case joybutton::Y:
+            if (current_button_ == joybutton::Y)
                 return "GetUp";
-            case joybutton::RB_DPadUp:
-            case joybutton::LB_DPadUp:
+            if (current_button_ == joybutton::LB_DPadUp)
                 return "RLLocomotion";
-            case joybutton::RB_DPadRight:
-            case joybutton::LB_DPadRight:
+            if (current_button_ == joybutton::LB_DPadDown)
+                return "AMP";
+            if (current_button_ == joybutton::LB_DPadLeft)
+                return "GangnamStyle";
+            if (current_button_ == joybutton::LB_DPadRight)
                 return "Dance102";
-            default:
-                return name_;
+            if (current_button_ == joybutton::RB_DPadUp)
+                return "AmpZlab";
+            if (current_button_ == joybutton::RB_DPadDown)
+                return "Mimic";
+            if (current_button_ == joybutton::RB_DPadLeft)
+                return "ZLocomotion";
+            return name_;
+        }
+    };
+
+    class GangnamStyle : public FsmState
+    {
+    public:
+        explicit GangnamStyle(FsmContext &ctx) : FsmState("GangnamStyle", ctx) {}
+
+        void enter() override
+        {
+            FsmState::enter();
+            tui::message("INFO", "Enter G1 GangnamStyle");
+            progress_ = -1.0;
+            if (ctx_.policy.start_policy("gangnam_style"))
+                update_progress();
+        }
+
+        void run() override
+        {
+            ctx_.policy.run_policy();
+            if (ctx_.policy.policy_active())
+                update_progress();
+        }
+
+        void exit() override
+        {
+            tui::message("INFO", "Exit G1 GangnamStyle");
+            ctx_.policy.stop_policy();
+        }
+
+        std::string check_change() override
+        {
+            poll_input();
+            if (!ctx_.policy.policy_active())
+                return "Passive";
+            if (ctx_.policy.motion_finished())
+                return "RLLocomotion";
+            if (current_button_ == joybutton::Y)
+                return "Passive";
+            if (current_button_ == joybutton::RB_A)
+                return "GetUp";
+            if (current_button_ == joybutton::LB_DPadUp)
+                return "RLLocomotion";
+            if (current_button_ == joybutton::LB_DPadDown)
+                return "AMP";
+            if (current_button_ == joybutton::LB_DPadLeft)
+                return "GangnamStyle";
+            if (current_button_ == joybutton::LB_DPadRight)
+                return "Dance102";
+            if (current_button_ == joybutton::RB_DPadUp)
+                return "AmpZlab";
+            if (current_button_ == joybutton::RB_DPadDown)
+                return "Mimic";
+            if (current_button_ == joybutton::RB_DPadLeft)
+                return "ZLocomotion";
+            return name_;
+        }
+
+    private:
+        void update_progress()
+        {
+            const auto progress = ctx_.policy.motion_progress();
+            if (progress >= 1.0 || progress_ < 0.0 || progress - progress_ >= 0.01)
+            {
+                tui::progress(progress, 1.0, "Gangnam Style");
+                progress_ = progress;
             }
+        }
+
+        double progress_{-1.0};
+    };
+
+    class AmpZlab : public FsmState
+    {
+    public:
+        explicit AmpZlab(FsmContext &ctx) : FsmState("AmpZlab", ctx) {}
+
+        void enter() override
+        {
+            FsmState::enter();
+            tui::message("INFO", "Enter G1 AmpZlab");
+            if (ctx_.policy.start_policy("amp_zlab"))
+            {
+                const auto command = ctx_.policy.velocity_command();
+                tui::velocity(command.x, command.y, command.yaw, true);
+            }
+        }
+
+        void run() override
+        {
+            ctx_.policy.run_policy();
+            if (ctx_.policy.policy_active())
+            {
+                const auto command = ctx_.policy.velocity_command();
+                tui::velocity(command.x, command.y, command.yaw);
+            }
+        }
+
+        void exit() override
+        {
+            tui::message("INFO", "Exit G1 AmpZlab");
+            ctx_.policy.stop_policy();
+        }
+
+        std::string check_change() override
+        {
+            poll_input();
+            if (!ctx_.policy.policy_active())
+                return "Passive";
+            if (current_button_ == joybutton::LB_X)
+                return "Passive";
+            if (current_button_ == joybutton::Y)
+                return "GetUp";
+            if (current_button_ == joybutton::LB_DPadUp)
+                return "RLLocomotion";
+            if (current_button_ == joybutton::LB_DPadDown)
+                return "AMP";
+            if (current_button_ == joybutton::LB_DPadLeft)
+                return "GangnamStyle";
+            if (current_button_ == joybutton::LB_DPadRight)
+                return "Dance102";
+            if (current_button_ == joybutton::RB_DPadUp)
+                return "AmpZlab";
+            if (current_button_ == joybutton::RB_DPadDown)
+                return "Mimic";
+            if (current_button_ == joybutton::RB_DPadLeft)
+                return "ZLocomotion";
+            return name_;
+        }
+    };
+
+    class Mimic : public FsmState
+    {
+    public:
+        explicit Mimic(FsmContext &ctx) : FsmState("Mimic", ctx) {}
+
+        void enter() override
+        {
+            FsmState::enter();
+            tui::message("INFO", "Enter G1 Mimic");
+            progress_ = -1.0;
+            if (ctx_.policy.start_policy("mimic"))
+                update_progress();
+        }
+
+        void run() override
+        {
+            ctx_.policy.run_policy();
+            if (ctx_.policy.policy_active())
+                update_progress();
+        }
+
+        void exit() override
+        {
+            tui::message("INFO", "Exit G1 Mimic");
+            ctx_.policy.stop_policy();
+        }
+
+        std::string check_change() override
+        {
+            poll_input();
+            if (!ctx_.policy.policy_active())
+                return "Passive";
+            if (ctx_.policy.motion_finished())
+                return "RLLocomotion";
+            if (current_button_ == joybutton::Y)
+                return "Passive";
+            if (current_button_ == joybutton::RB_A)
+                return "GetUp";
+            if (current_button_ == joybutton::LB_DPadUp)
+                return "RLLocomotion";
+            if (current_button_ == joybutton::LB_DPadDown)
+                return "AMP";
+            if (current_button_ == joybutton::LB_DPadLeft)
+                return "GangnamStyle";
+            if (current_button_ == joybutton::LB_DPadRight)
+                return "Dance102";
+            if (current_button_ == joybutton::RB_DPadUp)
+                return "AmpZlab";
+            if (current_button_ == joybutton::RB_DPadDown)
+                return "Mimic";
+            if (current_button_ == joybutton::RB_DPadLeft)
+                return "ZLocomotion";
+            return name_;
+        }
+
+    private:
+        void update_progress()
+        {
+            const auto progress = ctx_.policy.motion_progress();
+            if (progress >= 1.0 || progress_ < 0.0 || progress - progress_ >= 0.01)
+            {
+                tui::progress(progress, 1.0, "Mimic");
+                progress_ = progress;
+            }
+        }
+
+        double progress_{-1.0};
+    };
+
+    class ZLocomotion : public FsmState
+    {
+    public:
+        explicit ZLocomotion(FsmContext &ctx) : FsmState("ZLocomotion", ctx) {}
+
+        void enter() override
+        {
+            FsmState::enter();
+            tui::message("INFO", "Enter G1 ZLocomotion");
+            if (ctx_.policy.start_policy("zlocomotion"))
+            {
+                const auto command = ctx_.policy.velocity_command();
+                tui::velocity(command.x, command.y, command.yaw, true);
+            }
+        }
+
+        void run() override
+        {
+            ctx_.policy.run_policy();
+            if (ctx_.policy.policy_active())
+            {
+                const auto command = ctx_.policy.velocity_command();
+                tui::velocity(command.x, command.y, command.yaw);
+            }
+        }
+
+        void exit() override
+        {
+            tui::message("INFO", "Exit G1 ZLocomotion");
+            ctx_.policy.stop_policy();
+        }
+
+        std::string check_change() override
+        {
+            poll_input();
+            if (!ctx_.policy.policy_active())
+                return "Passive";
+            if (current_button_ == joybutton::Y)
+                return "Passive";
+            if (current_button_ == joybutton::RB_A)
+                return "GetUp";
+            if (current_button_ == joybutton::LB_DPadUp)
+                return "RLLocomotion";
+            if (current_button_ == joybutton::LB_DPadDown)
+                return "AMP";
+            if (current_button_ == joybutton::LB_DPadLeft)
+                return "GangnamStyle";
+            if (current_button_ == joybutton::LB_DPadRight)
+                return "Dance102";
+            if (current_button_ == joybutton::RB_DPadUp)
+                return "AmpZlab";
+            if (current_button_ == joybutton::RB_DPadDown)
+                return "Mimic";
+            if (current_button_ == joybutton::RB_DPadLeft)
+                return "ZLocomotion";
+            return name_;
         }
     };
 
@@ -351,6 +622,14 @@ namespace g1
                 return std::make_shared<Dance102>(ctx);
             if (name == "AMP")
                 return std::make_shared<AmpLocomotion>(ctx);
+            if (name == "GangnamStyle")
+                return std::make_shared<GangnamStyle>(ctx);
+            if (name == "AmpZlab")
+                return std::make_shared<AmpZlab>(ctx);
+            if (name == "Mimic")
+                return std::make_shared<Mimic>(ctx);
+            if (name == "ZLocomotion")
+                return std::make_shared<ZLocomotion>(ctx);
             return nullptr;
         }
 
@@ -358,7 +637,8 @@ namespace g1
 
         std::vector<std::string> supported_states() const override
         {
-            return {"Passive", "Disabled", "GetUp", "RLLocomotion", "Dance102", "AMP"};
+            return {"Passive", "Disabled", "GetUp", "RLLocomotion", "AMP", "GangnamStyle",
+                    "Dance102", "AmpZlab", "Mimic", "ZLocomotion"};
         }
 
         std::string initial_state() const override { return "Passive"; }

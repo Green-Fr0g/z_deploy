@@ -14,8 +14,14 @@
 namespace g1_23
 {
 
-// A -> GetUp, LB+X -> Passive, RB+DPadUp -> RLLocomotion.
-// B enters Disabled from Passive; A or LB+X returns Disabled to Passive.
+// Key map, aligned with the G1 FSM:
+//   Passive:  A / RB+A -> GetUp, Y (or LB+X) -> Disabled
+//   Disabled: Y (or LB+X) -> Passive
+//   GetUp:    Y / LB+X -> Passive; once standing is complete LB/RB+DPadUp ->
+//             RLLocomotion, LB/RB+DPadDown -> Mimic, LB/RB+DPadRight -> Dance
+//   RLLocomotion / Dance / Mimic: Y / LB+X -> Passive, RB+A -> GetUp, and the DPad
+//             switches between locomotion, Dance (dance1_subject2) and Mimic
+//             (mimic). A finished motion returns to RLLocomotion.
 
 class Passive : public FsmState
 {
@@ -45,9 +51,9 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::A)
+        if (current_button_ == joybutton::A || current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::B)
+        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
             return "Disabled";
         return name_;
     }
@@ -81,7 +87,7 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::LB_X || current_button_ == joybutton::A)
+        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
             return "Passive";
         return name_;
     }
@@ -126,15 +132,20 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
             return "Passive";
         if (percent_ < 1.0F)
             return name_; // Consume and ignore policy requests until standing is complete.
-        switch (current_button_)
-        {
-        case joybutton::RB_DPadUp: return "RLLocomotion";
-        default: return name_;
-        }
+        if (current_button_ == joybutton::RB_DPadUp ||
+            current_button_ == joybutton::LB_DPadUp)
+            return "RLLocomotion";
+        if (current_button_ == joybutton::RB_DPadRight ||
+            current_button_ == joybutton::LB_DPadRight)
+            return "Dance";
+        if (current_button_ == joybutton::RB_DPadDown ||
+            current_button_ == joybutton::LB_DPadDown)
+            return "Mimic";
+        return name_;
     }
 
 private:
@@ -182,13 +193,143 @@ public:
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
-        switch (current_button_)
+        if (current_button_ == joybutton::Y ||
+            current_button_ == joybutton::LB_X)
+            return "Passive";
+        if (current_button_ == joybutton::RB_A)
+            return "GetUp";
+        if (current_button_ == joybutton::RB_DPadRight ||
+            current_button_ == joybutton::LB_DPadRight)
+            return "Dance";
+        if (current_button_ == joybutton::RB_DPadDown ||
+            current_button_ == joybutton::LB_DPadDown)
+            return "Mimic";
+        return name_;
+    }
+};
+
+class Dance : public FsmState
+{
+public:
+    explicit Dance(FsmContext &ctx) : FsmState("Dance", ctx) {}
+
+    void enter() override
+    {
+        FsmState::enter();
+        tui::message("INFO", "Enter G1-23 Dance");
+        progress_ = -1.0;
+        if (ctx_.policy.start_policy("dance1_subject2"))
+            update_progress();
+    }
+
+    void run() override
+    {
+        ctx_.policy.run_policy();
+        if (ctx_.policy.policy_active())
+            update_progress();
+    }
+
+    void exit() override
+    {
+        tui::message("INFO", "Exit G1-23 Dance");
+        ctx_.policy.stop_policy();
+    }
+
+    std::string check_change() override
+    {
+        poll_input();
+        if (!ctx_.policy.policy_active())
+            return "Passive";
+        if (ctx_.policy.motion_finished())
+            return "RLLocomotion";
+        if (current_button_ == joybutton::Y ||
+            current_button_ == joybutton::LB_X)
+            return "Passive";
+        if (current_button_ == joybutton::RB_A)
+            return "GetUp";
+        if (current_button_ == joybutton::RB_DPadUp ||
+            current_button_ == joybutton::LB_DPadUp)
+            return "RLLocomotion";
+        if (current_button_ == joybutton::RB_DPadDown ||
+            current_button_ == joybutton::LB_DPadDown)
+            return "Mimic";
+        return name_;
+    }
+
+private:
+    void update_progress()
+    {
+        const auto progress = ctx_.policy.motion_progress();
+        if (progress >= 1.0 || progress_ < 0.0 || progress - progress_ >= 0.01)
         {
-        case joybutton::LB_X: return "Passive";
-        case joybutton::A: return "GetUp";
-        default: return name_;
+            tui::progress(progress, 1.0, "Dance");
+            progress_ = progress;
         }
     }
+
+    double progress_{-1.0};
+};
+
+class Mimic : public FsmState
+{
+public:
+    explicit Mimic(FsmContext &ctx) : FsmState("Mimic", ctx) {}
+
+    void enter() override
+    {
+        FsmState::enter();
+        tui::message("INFO", "Enter G1-23 Mimic");
+        progress_ = -1.0;
+        if (ctx_.policy.start_policy("mimic"))
+            update_progress();
+    }
+
+    void run() override
+    {
+        ctx_.policy.run_policy();
+        if (ctx_.policy.policy_active())
+            update_progress();
+    }
+
+    void exit() override
+    {
+        tui::message("INFO", "Exit G1-23 Mimic");
+        ctx_.policy.stop_policy();
+    }
+
+    std::string check_change() override
+    {
+        poll_input();
+        if (!ctx_.policy.policy_active())
+            return "Passive";
+        if (ctx_.policy.motion_finished())
+            return "RLLocomotion";
+        if (current_button_ == joybutton::Y ||
+            current_button_ == joybutton::LB_X)
+            return "Passive";
+        if (current_button_ == joybutton::RB_A)
+            return "GetUp";
+        if (current_button_ == joybutton::RB_DPadUp ||
+            current_button_ == joybutton::LB_DPadUp)
+            return "RLLocomotion";
+        if (current_button_ == joybutton::RB_DPadRight ||
+            current_button_ == joybutton::LB_DPadRight)
+            return "Dance";
+        return name_;
+    }
+
+private:
+    void update_progress()
+    {
+        const auto progress = ctx_.policy.motion_progress();
+        if (progress >= 1.0 || progress_ < 0.0 || progress - progress_ >= 0.01)
+        {
+            tui::progress(progress, 1.0, "Mimic");
+            progress_ = progress;
+        }
+    }
+
+    double progress_{-1.0};
 };
 
 class Factory : public FsmFactory
@@ -204,6 +345,10 @@ public:
             return std::make_shared<GetUp>(ctx);
         if (name == "RLLocomotion")
             return std::make_shared<RLLocomotion>(ctx);
+        if (name == "Dance")
+            return std::make_shared<Dance>(ctx);
+        if (name == "Mimic")
+            return std::make_shared<Mimic>(ctx);
         return nullptr;
     }
 
@@ -211,7 +356,7 @@ public:
 
     std::vector<std::string> supported_states() const override
     {
-        return {"Passive", "Disabled", "GetUp", "RLLocomotion"};
+        return {"Passive", "Disabled", "GetUp", "RLLocomotion", "Dance", "Mimic"};
     }
 
     std::string initial_state() const override { return "Passive"; }

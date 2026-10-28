@@ -1,8 +1,9 @@
 
-robot: "h2"
+robot: "adam"
 scene: "empty.xml"
 
-sim_frequency: 500.0
+# Adam's low-inertia wrists need this physics rate for explicit joint PD.
+sim_frequency: 2000.0
 state_publish_frequency: 200.0
 imu_publish_frequency: 200.0
 

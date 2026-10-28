@@ -68,7 +68,7 @@ def default_config_path() -> pathlib.Path:
         + ', '.join(str(candidate) for candidate in candidates))
 
 def _robot_scene_path(config_path: pathlib.Path, robot: str, scene: str) -> pathlib.Path:
-    """Resolve ``robots_model/<robot>_mjcf/mjcf/<scene>``."""
+    """Resolve scenes in either the model's ``mjcf/`` directory or its root."""
     robot_name = pathlib.Path(robot).name
     scene_path = pathlib.Path(scene).expanduser()
     if scene_path.suffix == '':
@@ -81,9 +81,11 @@ def _robot_scene_path(config_path: pathlib.Path, robot: str, scene: str) -> path
         pathlib.Path.cwd() / 'src' / 'simulation' / 'robots_model',
     )
     for root in roots:
-        candidate = (root / f'{robot_name}_mjcf' / 'mjcf' / scene_path).resolve()
-        if candidate.is_file():
-            return candidate
+        model_root = root / f'{robot_name}_mjcf'
+        for directory in (model_root / 'mjcf', model_root):
+            candidate = (directory / scene_path).resolve()
+            if candidate.is_file():
+                return candidate
     return (roots[0] / f'{robot_name}_mjcf' / 'mjcf' / scene_path).resolve()
 
 

@@ -320,14 +320,17 @@ void check_independent_workers(double dt, int decimation, bool term_priority)
         require(observation.size() == 25, "History dimensions changed across threads");
         require(sequence(observation) > sequence(capture.observations[sample - 1]),
                 "Inference reused an old observation snapshot");
-        const float latest = observation.front();
         for (std::size_t history = 0; history < 5; ++history)
         {
+            // History contains frames actually consumed by inference, not the
+            // intermediate observation ticks skipped while inference was busy.
+            const auto previous = sample >= history ? sample - history : 0;
+            const float expected = capture.observations[previous].front();
             for (std::size_t axis = 0; axis < 3; ++axis)
             {
                 const auto index = term_priority ? history * 3 + axis : history * 5 + axis;
-                require(near(observation[index], latest - static_cast<float>(history) / 1000.0F),
-                        "History did not advance once per observation tick, or the snapshot was torn");
+                require(near(observation[index], expected),
+                        "History did not advance once per inference step, or the snapshot was torn");
             }
         }
         const auto action_offset = term_priority ? 15U : 3U;
