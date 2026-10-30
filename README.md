@@ -70,6 +70,16 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
+设置实机 SDK2 网卡时使用 `source`，让后续从当前终端启动的程序能够读取 `Z_NETIF`：
+
+```bash
+source ./z_build.sh --net lo  # 联合仿真用 lo，实机填写对应网卡名
+echo "$Z_NETIF"
+```
+
+`-net` 与 `--net` 等价；单独设置网卡或 `-rd` / `--rd` 不会触发编译，也不需要先加载 ROS。
+设置只对当前终端及其后续启动的子进程生效，新终端需要重新设置。
+
 只构建部署包：
 
 ```bash

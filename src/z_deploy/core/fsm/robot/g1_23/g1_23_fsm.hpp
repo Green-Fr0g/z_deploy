@@ -10,16 +10,17 @@
 #include <fsm/fsm_register.hpp>
 #include <tui/display.hpp>
 #include <utils/math.hpp>
+#include <utils/utils.hpp>
 
 namespace g1_23
 {
 
-// Key map, aligned with the G1 FSM:
-//   Passive:  A / RB+A -> GetUp, Y (or LB+X) -> Disabled
-//   Disabled: Y (or LB+X) -> Passive
-//   GetUp:    Y / LB+X -> Passive; once standing is complete LB/RB+DPadUp ->
-//             RLLocomotion, LB/RB+DPadDown -> Mimic, LB/RB+DPadRight -> Dance
-//   RLLocomotion / Dance / Mimic: Y / LB+X -> Passive, RB+A -> GetUp, and the DPad
+// Key map:
+//   Passive:  RB+A -> GetUp, Y -> Disabled
+//   Disabled: Y -> Passive
+//   GetUp:    Y -> Passive; once standing is complete LB+DPadUp ->
+//             RLLocomotion, LB+DPadDown -> Mimic, LB+DPadRight -> Dance
+//   RLLocomotion / Dance / Mimic: Y -> Passive, RB+A -> GetUp, and LB+DPad
 //             switches between locomotion, Dance (dance1_subject2) and Mimic
 //             (mimic). A finished motion returns to RLLocomotion.
 
@@ -51,9 +52,9 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::A || current_button_ == joybutton::RB_A)
+        if (current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Disabled";
         return name_;
     }
@@ -87,7 +88,7 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         return name_;
     }
@@ -132,18 +133,15 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (percent_ < 1.0F)
             return name_; // Consume and ignore policy requests until standing is complete.
-        if (current_button_ == joybutton::RB_DPadUp ||
-            current_button_ == joybutton::LB_DPadUp)
+        if (current_button_ == joybutton::LB_DPadUp)
             return "RLLocomotion";
-        if (current_button_ == joybutton::RB_DPadRight ||
-            current_button_ == joybutton::LB_DPadRight)
+        if (current_button_ == joybutton::LB_DPadRight)
             return "Dance";
-        if (current_button_ == joybutton::RB_DPadDown ||
-            current_button_ == joybutton::LB_DPadDown)
+        if (current_button_ == joybutton::LB_DPadDown)
             return "Mimic";
         return name_;
     }
@@ -190,19 +188,18 @@ public:
 
     std::string check_change() override
     {
+        if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 60.0))
+            return "Passive";
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
-        if (current_button_ == joybutton::Y ||
-            current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::RB_DPadRight ||
-            current_button_ == joybutton::LB_DPadRight)
+        if (current_button_ == joybutton::LB_DPadRight)
             return "Dance";
-        if (current_button_ == joybutton::RB_DPadDown ||
-            current_button_ == joybutton::LB_DPadDown)
+        if (current_button_ == joybutton::LB_DPadDown)
             return "Mimic";
         return name_;
     }
@@ -237,21 +234,20 @@ public:
 
     std::string check_change() override
     {
+        if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 20.0))
+            return "Passive";
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
         if (ctx_.policy.motion_finished())
             return "RLLocomotion";
-        if (current_button_ == joybutton::Y ||
-            current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::RB_DPadUp ||
-            current_button_ == joybutton::LB_DPadUp)
+        if (current_button_ == joybutton::LB_DPadUp)
             return "RLLocomotion";
-        if (current_button_ == joybutton::RB_DPadDown ||
-            current_button_ == joybutton::LB_DPadDown)
+        if (current_button_ == joybutton::LB_DPadDown)
             return "Mimic";
         return name_;
     }
@@ -299,21 +295,20 @@ public:
 
     std::string check_change() override
     {
+        if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 20.0))
+            return "Passive";
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
         if (ctx_.policy.motion_finished())
             return "RLLocomotion";
-        if (current_button_ == joybutton::Y ||
-            current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::RB_DPadUp ||
-            current_button_ == joybutton::LB_DPadUp)
+        if (current_button_ == joybutton::LB_DPadUp)
             return "RLLocomotion";
-        if (current_button_ == joybutton::RB_DPadRight ||
-            current_button_ == joybutton::LB_DPadRight)
+        if (current_button_ == joybutton::LB_DPadRight)
             return "Dance";
         return name_;
     }

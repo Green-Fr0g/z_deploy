@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <optional>
 #include <stdexcept>
@@ -156,6 +157,33 @@ inline void clip(std::vector<float> &values, float limit)
         return;
     for (auto &value : values)
         value = std::clamp(value, -limit, limit);
+}
+
+// Quaternion order: wxyz. Body Z elevation: upright 90, horizontal 0, inverted -90 degrees.
+// Returns true below limit_deg [0, 90]; yaw does not affect the result.
+// Invalid quaternion or limit also returns true to request protection.
+inline bool tilt_limit_exceeded(const std::vector<float> &quaternion, double limit_deg)
+{
+    if (quaternion.size() != 4 || !std::isfinite(limit_deg) ||
+        limit_deg < 0.0 || limit_deg > 90.0)
+        return true;
+
+    double norm_squared = 0.0;
+    for (const float value : quaternion)
+    {
+        if (!std::isfinite(value))
+            return true;
+        norm_squared += static_cast<double>(value) * value;
+    }
+    if (norm_squared < 1e-12)
+        return true;
+
+    const double x = quaternion[1];
+    const double y = quaternion[2];
+    // Dot product of body Z and world Z, normalized for non-unit quaternions.
+    const double sin_elevation = std::clamp(1.0 - 2.0 * (x * x + y * y) / norm_squared, -1.0, 1.0);
+    constexpr double deg_to_rad = 3.14159265358979323846 / 180.0;
+    return sin_elevation < std::sin(limit_deg * deg_to_rad);
 }
 
 } // namespace utils

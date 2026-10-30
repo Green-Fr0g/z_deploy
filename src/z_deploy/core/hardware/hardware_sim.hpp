@@ -14,6 +14,7 @@
 #include <z_msgs/msg/joints_data.hpp>
 
 #include <hardware/hardware_base.hpp>
+#include <hardware/hardware_register.hpp>
 #include <hardware/input.hpp>
 
 // MuJoCo simulation robot backend.
@@ -210,3 +211,8 @@ private:
     mutable std::mutex service_mutex_;
     mutable bool paused_{false};
 };
+
+Z_REGISTER_HARDWARE("sim", "g1", HardwareSim)
+Z_REGISTER_HARDWARE("sim", "g1_23", HardwareSim)
+Z_REGISTER_HARDWARE("sim", "dr02", HardwareSim)
+Z_REGISTER_HARDWARE("sim", "adam", HardwareSim)

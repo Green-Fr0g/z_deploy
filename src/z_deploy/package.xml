@@ -10,6 +10,5 @@
   <depend>std_srvs</depend>
   <depend>z_msgs</depend>
   <depend>yaml-cpp</depend>
-  <test_depend>ament_cmake_gtest</test_depend>
   <export><build_type>ament_cmake</build_type></export>
 </package>

@@ -1,5 +1,5 @@
 g1_23/locomotion:
-  model_name: policy.pt
+  model_name: policy_40000.pt
   decimation: 4
   observation_decimation: 4
   observations: [ang_vel, gravity_vec, commands, dof_pos, dof_vel, actions]

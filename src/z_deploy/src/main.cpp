@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include <rclcpp/rclcpp.hpp>
@@ -13,7 +14,12 @@
 #include <fsm/robot/g1/g1_fsm.hpp>
 #include <fsm/robot/g1_23/g1_23_fsm.hpp>
 #include <fsm/fsm_register.hpp>
+#include <hardware/hardware_register.hpp>
 #include <hardware/hardware_sim.hpp>
+#if Z_DEPLOY_HAS_UNITREE
+#include <hardware/real/hardware_g1.hpp>
+#include <hardware/real/hardware_g1_23.hpp>
+#endif
 #include <policy/policy_manager.hpp>
 
 namespace
@@ -29,7 +35,8 @@ void signal_handler(int)
 void usage(const char *program)
 {
     std::cout << "Usage: " << program
-              << " --robot <g1|g1_23|dr02|adam> --mode <sim|real>\n";
+              << " --robot <g1|g1_23|dr02|adam> --mode <sim|real>\n"
+              << "Real mode supports g1 and g1_23 and reads the network interface from Z_NETIF.\n";
 }
 
 std::filesystem::path policy_root()
@@ -70,9 +77,14 @@ int main(int argc, char **argv)
         }
     }
 
-    if (robot.empty() || mode.empty() || (mode != "sim" && mode != "real"))
+    if (robot.empty() || mode.empty())
     {
         usage(argv[0]);
+        return 2;
+    }
+    if (!HardwareRegister::instance().supported(mode, robot))
+    {
+        std::cerr << "No hardware backend registered for mode=" << mode << ", robot=" << robot << '\n';
         return 2;
     }
 
@@ -92,31 +104,34 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (mode != "sim")
+    try
     {
-        std::cerr << "The current hardware implementation supports simulation mode only\n";
+        auto hardware = HardwareRegister::instance().create(mode, config.robot());
+        if (!hardware)
+            throw std::runtime_error("No hardware backend registered for mode=" + mode + ", robot=" + robot);
+
+        MotionCommand motion;
+        PolicyManager policy(*hardware, config, policies, motion);
+        FsmContext context{*hardware, config, policy};
+        // Read the real remote before state entry so held buttons are ignored.
+        hardware->start();
+        auto fsm = FsmRegister::instance().create(robot, context);
+        if (!fsm)
+            throw std::runtime_error("No FSM registered for robot: " + robot);
+
+        active_fsm = fsm.get();
+        fsm->run();
+        active_fsm = nullptr;
+        policy.stop_policy();
+        hardware->stop();
+    }
+    catch (const std::exception &e)
+    {
+        active_fsm = nullptr;
+        std::cerr << "Deployment failed: " << e.what() << '\n';
         rclcpp::shutdown();
         return 1;
     }
-    auto hardware = std::make_unique<HardwareSim>(config.robot());
-
-    MotionCommand motion;
-    PolicyManager policy(*hardware, config, policies, motion);
-    FsmContext context{*hardware, config, policy};
-    auto fsm = FsmRegister::instance().create(robot, context);
-    if (!fsm)
-    {
-        std::cerr << "No FSM registered for robot: " << robot << '\n';
-        rclcpp::shutdown();
-        return 1;
-    }
-
-    hardware->start();
-    active_fsm = fsm.get();
-    fsm->run();
-    active_fsm = nullptr;
-    policy.stop_policy();
-    hardware->stop();
     rclcpp::shutdown();
     return 0;
 }

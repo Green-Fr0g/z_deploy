@@ -12,3 +12,6 @@ log/
 
 # Third-party dependencies are downloaded or managed outside the source tree.
 thirdparty/
+
+# Local SDK2 service shim for unitree_mujoco co-simulation.
+/src/z_deploy/test/unitree_mujoco_patch/

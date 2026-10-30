@@ -15,11 +15,11 @@ namespace dr02
 {
 
 // Key map, aligned with the G1 / G1-23 FSMs:
-//   Passive:  A / RB+A -> GetUp, Y (or LB+X) -> Disabled
-//   Disabled: Y (or LB+X) -> Passive
-//   GetUp:    Y / LB+X -> Passive; once standing is complete LB/RB+DPadUp ->
-//             RLLocomotion, LB/RB+DPadDown -> Mimic
-//   RLLocomotion / Mimic: Y / LB+X -> Passive, RB+A -> GetUp, and the DPad switches
+//   Passive:  RB+A -> GetUp, Y -> Disabled
+//   Disabled: Y -> Passive
+//   GetUp:    Y -> Passive; once standing is complete LB+DPadUp ->
+//             RLLocomotion, LB+DPadDown -> Mimic
+//   RLLocomotion / Mimic: Y -> Passive, RB+A -> GetUp, and LB+DPad switches
 //             between locomotion and Mimic. A finished motion returns to
 //             RLLocomotion.
 
@@ -51,9 +51,9 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::A || current_button_ == joybutton::RB_A)
+        if (current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Disabled";
         return name_;
     }
@@ -87,7 +87,7 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         return name_;
     }
@@ -132,15 +132,13 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (percent_ < 1.0F)
             return name_; // Consume and ignore policy requests until standing is complete.
-        if (current_button_ == joybutton::RB_DPadUp ||
-            current_button_ == joybutton::LB_DPadUp)
+        if (current_button_ == joybutton::LB_DPadUp)
             return "RLLocomotion";
-        if (current_button_ == joybutton::RB_DPadDown ||
-            current_button_ == joybutton::LB_DPadDown)
+        if (current_button_ == joybutton::LB_DPadDown)
             return "Mimic";
         return name_;
     }
@@ -190,13 +188,11 @@ public:
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
-        if (current_button_ == joybutton::Y ||
-            current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::RB_DPadDown ||
-            current_button_ == joybutton::LB_DPadDown)
+        if (current_button_ == joybutton::LB_DPadDown)
             return "Mimic";
         return name_;
     }
@@ -236,13 +232,11 @@ public:
             return "Passive";
         if (ctx_.policy.motion_finished())
             return "RLLocomotion";
-        if (current_button_ == joybutton::Y ||
-            current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::RB_DPadUp ||
-            current_button_ == joybutton::LB_DPadUp)
+        if (current_button_ == joybutton::LB_DPadUp)
             return "RLLocomotion";
         return name_;
     }

@@ -18,7 +18,7 @@ namespace g1
     // LB + Up/Down/Left/Right -> RLLocomotion / AMP / GangnamStyle / Dance102.
     // RB + Up/Down/Left/Right -> AmpZlab / Mimic / ZLocomotion / reserved.
     // Passive: A / RB+A -> GetUp, Y -> Disabled; Disabled: Y -> Passive.
-    // GetUp: LB+X -> Passive. RLLocomotion / Dance102: Y -> Passive, RB+A -> GetUp.
+    // GetUp: Y -> Passive. RLLocomotion / Dance102: Y -> Passive, RB+A -> GetUp.
     // AMP: LB+X -> Passive, Y -> GetUp.
 
     class Passive : public FsmState
@@ -50,7 +50,7 @@ namespace g1
         std::string check_change() override
         {
             poll_input();
-            if (current_button_ == joybutton::A || current_button_ == joybutton::RB_A)
+            if (current_button_ == joybutton::RB_A)
                 return "GetUp";
             if (current_button_ == joybutton::Y)
                 return "Disabled";
@@ -132,7 +132,7 @@ namespace g1
         std::string check_change() override
         {
             poll_input();
-            if (current_button_ == joybutton::LB_X)
+            if (current_button_ == joybutton::Y)
                 return "Passive";
             if (percent_ < 1.0F)
                 return name_; // Consume and ignore policy requests until standing is complete.
@@ -327,9 +327,9 @@ namespace g1
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
-            if (current_button_ == joybutton::LB_X)
-                return "Passive";
             if (current_button_ == joybutton::Y)
+                return "Passive";
+            if (current_button_ == joybutton::RB_A)
                 return "GetUp";
             if (current_button_ == joybutton::LB_DPadUp)
                 return "RLLocomotion";
@@ -455,9 +455,9 @@ namespace g1
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
-            if (current_button_ == joybutton::LB_X)
+             if (current_button_ == joybutton::Y)
                 return "Passive";
-            if (current_button_ == joybutton::Y)
+            if (current_button_ == joybutton::RB_A)
                 return "GetUp";
             if (current_button_ == joybutton::LB_DPadUp)
                 return "RLLocomotion";

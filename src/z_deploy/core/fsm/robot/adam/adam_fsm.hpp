@@ -14,12 +14,12 @@
 namespace adam
 {
 
-// Starts in Disabled. Keyboard: P -> Passive, 0 -> GetUp, 1 -> RLLocomotion.
-//   Passive:  A / RB+A -> GetUp, Y (or LB+X) -> Disabled
-//   Disabled: Y (or LB+X) -> Passive
-//   GetUp:    Y / LB+X -> Passive; once standing is complete RB/LB+DPadUp
+// Starts in Passive. Key map:
+//   Passive:  RB+A -> GetUp, Y -> Disabled
+//   Disabled: Y -> Passive
+//   GetUp:    Y -> Passive; once standing is complete LB+DPadUp
 //             starts RLLocomotion.
-//   RLLocomotion: Y / LB+X -> Passive, RB+A -> GetUp.
+//   RLLocomotion: Y -> Passive, RB+A -> GetUp.
 
 class Passive : public FsmState
 {
@@ -49,9 +49,9 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::A || current_button_ == joybutton::RB_A)
+        if (current_button_ == joybutton::RB_A)
             return "GetUp";
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Disabled";
         return name_;
     }
@@ -85,7 +85,7 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         return name_;
     }
@@ -130,12 +130,11 @@ public:
     std::string check_change() override
     {
         poll_input();
-        if (current_button_ == joybutton::Y || current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (percent_ < 1.0F)
             return name_; // Consume and ignore policy requests until standing is complete.
-        if (current_button_ == joybutton::RB_DPadUp ||
-            current_button_ == joybutton::LB_DPadUp)
+        if (current_button_ == joybutton::LB_DPadUp)
             return "RLLocomotion";
         return name_;
     }
@@ -185,8 +184,7 @@ public:
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
-        if (current_button_ == joybutton::Y ||
-            current_button_ == joybutton::LB_X)
+        if (current_button_ == joybutton::Y)
             return "Passive";
         if (current_button_ == joybutton::RB_A)
             return "GetUp";
@@ -217,7 +215,7 @@ public:
         return {"Passive", "Disabled", "GetUp", "RLLocomotion"};
     }
 
-    std::string initial_state() const override { return "Passive"; }
+    std::string initial_state() const override { return "Disabled"; }
 };
 
 } // namespace adam

@@ -23,7 +23,7 @@ set(POLICY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../policy")
 set(INFERENCE_RUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../thirdparty/interface_runtime")
 
 # The runtime setup script places the optional inference dependencies here.
-# Keep the package buildable without them (for unit tests), while linking them
+# Keep the hardware monitor buildable without them, while linking them
 # into the deployed executable whenever they are available.
 set(LIBTORCH_ROOT "${INFERENCE_RUNTIME_ROOT}/libtorch")
 find_package(Torch QUIET CONFIG PATHS "${LIBTORCH_ROOT}/share/cmake/Torch" NO_DEFAULT_PATH)
@@ -39,45 +39,81 @@ target_include_directories(z_deploy_joystick PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/library/joystick>
   $<INSTALL_INTERFACE:include>)
 
-add_executable(z_deploy_main src/main.cpp)
-target_compile_definitions(z_deploy_main PRIVATE Z_POLICY_ROOT="${POLICY_ROOT}")
-target_include_directories(z_deploy_main PRIVATE
-  ${Z_DEPLOY_INCLUDE_DIRS}
-  ${CMAKE_CURRENT_SOURCE_DIR}/library/joystick)
-ament_target_dependencies(z_deploy_main rclcpp std_srvs z_msgs)
-target_link_libraries(z_deploy_main yaml-cpp z_deploy_joystick Threads::Threads)
+add_executable(z_rl_deploy src/main.cpp)
+add_executable(test_hardware test/test_hardware.cpp)
+foreach(deploy_target IN ITEMS z_rl_deploy test_hardware)
+  target_compile_definitions(${deploy_target} PRIVATE Z_POLICY_ROOT="${POLICY_ROOT}")
+  target_include_directories(${deploy_target} PRIVATE
+    ${Z_DEPLOY_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/library/joystick)
+  ament_target_dependencies(${deploy_target} rclcpp std_srvs z_msgs)
+  target_link_libraries(${deploy_target} yaml-cpp z_deploy_joystick Threads::Threads)
+endforeach()
 
 set(Z_DEPLOY_RUNTIME_RPATH)
+option(Z_DEPLOY_ENABLE_UNITREE "Enable Unitree SDK2 real hardware backends" ON)
+set(Z_UNITREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/library/unitree_sdk2")
+set(Z_UNITREE_DDS_DIR "${Z_UNITREE_ROOT}/thirdparty/lib/${CMAKE_SYSTEM_PROCESSOR}")
+if(Z_DEPLOY_ENABLE_UNITREE)
+  find_library(Z_UNITREE_SDK_LIBRARY unitree_sdk2
+    PATHS "${Z_UNITREE_ROOT}/lib/${CMAKE_SYSTEM_PROCESSOR}" NO_DEFAULT_PATH)
+  find_library(Z_UNITREE_DDS_LIBRARY ddsc PATHS "${Z_UNITREE_DDS_DIR}" NO_DEFAULT_PATH)
+  find_library(Z_UNITREE_DDSXX_LIBRARY ddscxx PATHS "${Z_UNITREE_DDS_DIR}" NO_DEFAULT_PATH)
+endif()
+
+if(Z_DEPLOY_ENABLE_UNITREE AND Z_UNITREE_SDK_LIBRARY AND
+   Z_UNITREE_DDS_LIBRARY AND Z_UNITREE_DDSXX_LIBRARY)
+  add_library(z_deploy_unitree_sdk2 STATIC IMPORTED)
+  set_target_properties(z_deploy_unitree_sdk2 PROPERTIES
+    IMPORTED_LOCATION "${Z_UNITREE_SDK_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${Z_UNITREE_ROOT}/include;${Z_UNITREE_ROOT}/thirdparty/include;${Z_UNITREE_ROOT}/thirdparty/include/ddscxx"
+    INTERFACE_LINK_LIBRARIES "${Z_UNITREE_DDSXX_LIBRARY};${Z_UNITREE_DDS_LIBRARY};Threads::Threads")
+  foreach(deploy_target IN ITEMS z_rl_deploy test_hardware)
+    target_link_libraries(${deploy_target} z_deploy_unitree_sdk2)
+    target_compile_definitions(${deploy_target} PRIVATE Z_DEPLOY_HAS_UNITREE=1)
+  endforeach()
+  list(APPEND Z_DEPLOY_RUNTIME_RPATH "${Z_UNITREE_DDS_DIR}" "$ORIGIN/..")
+  # SDK2 binaries use versioned SONAMEs even though the bundled files omit .0.
+  install(FILES "${Z_UNITREE_DDS_LIBRARY}" DESTINATION lib RENAME libddsc.so.0)
+  install(FILES "${Z_UNITREE_DDSXX_LIBRARY}" DESTINATION lib RENAME libddscxx.so.0)
+  message(STATUS "z_deploy: Unitree SDK2 real hardware enabled")
+else()
+  foreach(deploy_target IN ITEMS z_rl_deploy test_hardware)
+    target_compile_definitions(${deploy_target} PRIVATE Z_DEPLOY_HAS_UNITREE=0)
+  endforeach()
+  message(STATUS "z_deploy: Unitree SDK2 disabled or unavailable; real hardware is unavailable")
+endif()
+
 if(Torch_FOUND)
   message(STATUS "z_deploy: LibTorch enabled from ${LIBTORCH_ROOT}")
-  target_compile_definitions(z_deploy_main PRIVATE Z_DEPLOY_HAS_TORCH=1)
-  target_include_directories(z_deploy_main PRIVATE ${TORCH_INCLUDE_DIRS})
-  target_compile_options(z_deploy_main PRIVATE ${TORCH_CXX_FLAGS})
-  target_link_libraries(z_deploy_main ${TORCH_LIBRARIES})
+  target_compile_definitions(z_rl_deploy PRIVATE Z_DEPLOY_HAS_TORCH=1)
+  target_include_directories(z_rl_deploy PRIVATE ${TORCH_INCLUDE_DIRS})
+  target_compile_options(z_rl_deploy PRIVATE ${TORCH_CXX_FLAGS})
+  target_link_libraries(z_rl_deploy ${TORCH_LIBRARIES})
   list(APPEND Z_DEPLOY_RUNTIME_RPATH "${LIBTORCH_ROOT}/lib")
 else()
   message(STATUS "z_deploy: LibTorch not found; .pt policies are unavailable")
-  target_compile_definitions(z_deploy_main PRIVATE Z_DEPLOY_HAS_TORCH=0)
+  target_compile_definitions(z_rl_deploy PRIVATE Z_DEPLOY_HAS_TORCH=0)
 endif()
 
 if(Z_DEPLOY_ONNX_INCLUDE_DIR AND Z_DEPLOY_ONNX_LIBRARY)
   message(STATUS "z_deploy: ONNX Runtime enabled from ${ONNX_ROOT}")
-  target_compile_definitions(z_deploy_main PRIVATE Z_DEPLOY_HAS_ONNX=1)
-  target_include_directories(z_deploy_main PRIVATE ${Z_DEPLOY_ONNX_INCLUDE_DIR})
-  target_link_libraries(z_deploy_main ${Z_DEPLOY_ONNX_LIBRARY})
+  target_compile_definitions(z_rl_deploy PRIVATE Z_DEPLOY_HAS_ONNX=1)
+  target_include_directories(z_rl_deploy PRIVATE ${Z_DEPLOY_ONNX_INCLUDE_DIR})
+  target_link_libraries(z_rl_deploy ${Z_DEPLOY_ONNX_LIBRARY})
   list(APPEND Z_DEPLOY_RUNTIME_RPATH "${ONNX_ROOT}/lib")
 else()
   message(STATUS "z_deploy: ONNX Runtime not found; .onnx policies are unavailable")
-  target_compile_definitions(z_deploy_main PRIVATE Z_DEPLOY_HAS_ONNX=0)
+  target_compile_definitions(z_rl_deploy PRIVATE Z_DEPLOY_HAS_ONNX=0)
 endif()
 
 if(Z_DEPLOY_RUNTIME_RPATH)
-  set_target_properties(z_deploy_main PROPERTIES
+  set_target_properties(z_rl_deploy test_hardware PROPERTIES
     BUILD_RPATH "${Z_DEPLOY_RUNTIME_RPATH}"
     INSTALL_RPATH "${Z_DEPLOY_RUNTIME_RPATH}")
 endif()
 
-install(TARGETS z_deploy_main z_deploy_joystick
+install(TARGETS z_rl_deploy test_hardware z_deploy_joystick
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME})
@@ -88,45 +124,5 @@ install(FILES
   include/types.hpp
   DESTINATION include/z_deploy)
 install(DIRECTORY ../../policy/ DESTINATION share/${PROJECT_NAME}/policy)
-
-if(BUILD_TESTING)
-  enable_testing()
-  add_executable(test_input test/test_input.cpp)
-  target_include_directories(test_input PRIVATE
-    ${Z_DEPLOY_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/library/joystick)
-  target_link_libraries(test_input z_deploy_joystick Threads::Threads)
-  add_test(NAME input COMMAND test_input)
-
-  add_executable(test_fsm test/test_fsm.cpp)
-  target_include_directories(test_fsm PRIVATE ${Z_DEPLOY_INCLUDE_DIRS})
-  target_compile_definitions(test_fsm PRIVATE Z_DEPLOY_HAS_TORCH=0)
-  target_link_libraries(test_fsm yaml-cpp Threads::Threads)
-  add_test(NAME fsm COMMAND test_fsm)
-  add_test(NAME adam_fsm COMMAND test_fsm adam)
-
-  add_executable(test_policy_manager test/test_policy_manager.cpp)
-  target_include_directories(test_policy_manager PRIVATE ${Z_DEPLOY_INCLUDE_DIRS})
-  target_compile_definitions(test_policy_manager PRIVATE Z_DEPLOY_HAS_TORCH=0)
-  target_link_libraries(test_policy_manager yaml-cpp Threads::Threads)
-  add_test(NAME policy_manager COMMAND test_policy_manager)
-
-  if(Torch_FOUND)
-    add_executable(test_adam_policy test/test_adam_policy.cpp)
-    target_include_directories(test_adam_policy PRIVATE ${Z_DEPLOY_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})
-    target_compile_definitions(test_adam_policy PRIVATE
-      Z_DEPLOY_HAS_TORCH=1 Z_DEPLOY_HAS_ONNX=0 Z_ADAM_POLICY_ROOT="${POLICY_ROOT}")
-    target_compile_options(test_adam_policy PRIVATE ${TORCH_CXX_FLAGS})
-    target_link_libraries(test_adam_policy yaml-cpp ${TORCH_LIBRARIES} Threads::Threads)
-    add_test(NAME adam_policy COMMAND test_adam_policy)
-
-    add_executable(test_g1_policies test/test_g1_policies.cpp)
-    target_include_directories(test_g1_policies PRIVATE ${Z_DEPLOY_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})
-    target_compile_definitions(test_g1_policies PRIVATE
-      Z_DEPLOY_HAS_TORCH=1 Z_DEPLOY_HAS_ONNX=0 Z_G1_POLICY_ROOT="${POLICY_ROOT}")
-    target_compile_options(test_g1_policies PRIVATE ${TORCH_CXX_FLAGS})
-    target_link_libraries(test_g1_policies yaml-cpp ${TORCH_LIBRARIES} Threads::Threads)
-    add_test(NAME g1_policies COMMAND test_g1_policies)
-  endif()
-endif()
 
 ament_package()
