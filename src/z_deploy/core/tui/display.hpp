@@ -237,13 +237,14 @@ inline void print_banner()
     std::lock_guard<std::mutex> lock(detail::mtx);
     detail::finalize_progress();
     std::cout << detail::kCyan
+              << "\n"
               << "  ███████╗\n"
               << "  ╚══███╔╝\n"
               << "    ███╔╝\n"
               << "   ███╔╝\n"
               << "  ███████╗\n"
               << "  ╚══════╝\n"
-              << "\033[37m   z_deploy" << detail::kReset << "\n\n" << std::flush;
+              << "\033[37m" << detail::kReset << "\n" << std::flush;
 }
 
 
@@ -429,7 +430,7 @@ inline void table(const std::vector<std::string> &headers,
 inline void policy_bindings(const std::string &robot,
                             const std::vector<std::vector<std::string>> &bindings)
 {
-    message("INFO", robot + " · 策略目录（相对于 policy/）");
+    message("INFO", robot );
     std::vector<std::vector<std::string>> rows;
     for (const auto &binding : bindings)
         if (binding.size() >= 3)
