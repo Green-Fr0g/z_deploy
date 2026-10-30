@@ -48,7 +48,8 @@ public:
             robot_ = parse_robot(first_section(YAML::LoadFile(base_path)));
             robot_.robot_name = robot_name;
             robot_loaded_ = true;
-            std::cout << "Loaded robot config from: " << base_path << std::endl;
+            std::cout << "Loaded robot config from: "
+                      << std::filesystem::absolute(base_path).lexically_normal() << std::endl;
 
             if (!policy_id.empty())
             {
@@ -57,7 +58,8 @@ public:
                 const YAML::Node policy_node = first_section(YAML::LoadFile(config_path));
                 policy_ = parse_policy(policy_node, policy_id);
                 policy_loaded_ = true;
-                std::cout << "Loaded policy config from: " << config_path << std::endl;
+                std::cout << "Loaded policy config from: "
+                          << std::filesystem::absolute(config_path).lexically_normal() << std::endl;
                 if (overlay)
                     robot_ = overlay_robot(robot_, policy_node);
 
@@ -67,7 +69,8 @@ public:
                     const auto motion_path = policy_dir_ / motion_yaml;
                     if (!load_motion_meta(motion_path, policy_.motion_meta))
                         throw ConfigError("Failed to load motion config: " + motion_path.string());
-                    std::cout << "Loaded motion config from: " << motion_path << std::endl;
+                    std::cout << "Loaded motion config from: "
+                              << std::filesystem::absolute(motion_path).lexically_normal() << std::endl;
                 }
             }
 

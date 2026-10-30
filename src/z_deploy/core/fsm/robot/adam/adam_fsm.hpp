@@ -10,6 +10,7 @@
 #include <fsm/fsm_register.hpp>
 #include <tui/display.hpp>
 #include <utils/math.hpp>
+#include <utils/utils.hpp>
 
 namespace adam
 {
@@ -181,6 +182,8 @@ public:
 
     std::string check_change() override
     {
+        if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 60.0))
+            return "Passive";
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
@@ -216,6 +219,18 @@ public:
     }
 
     std::string initial_state() const override { return "Disabled"; }
+
+    std::vector<std::vector<std::string>> key_bindings() const override
+    {
+        return {{"LB+Up", "RLLocomotion", "adam/locomotion"},
+                {"LB+Down", "Unassigned", "-"},
+                {"LB+Left", "Unassigned", "-"},
+                {"LB+Right", "Unassigned", "-"},
+                {"RB+Up", "Unassigned", "-"},
+                {"RB+Down", "Unassigned", "-"},
+                {"RB+Left", "Unassigned", "-"},
+                {"RB+Right", "Unassigned", "-"}};
+    }
 };
 
 } // namespace adam

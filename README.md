@@ -142,14 +142,15 @@ ros2 run robot_mujoco_sim robot_mujoco_sim --robot adam --scene empty.xml --view
 ros2 run z_deploy z_deploy_main --robot adam --mode sim
 ```
 
-部署端从 `Disabled` 开始：按 `P` 进入阻尼模式，按 `0` 用两秒插值到默认姿态，
-完成后按 `1` 启动 locomotion；策略运行时按 `P` 返回阻尼模式。
+部署端从 `Disabled` 开始：按 `0` 进入阻尼模式，按 `9` 用两秒插值到默认姿态，
+完成后按 `1` 启动 locomotion；策略运行时按 `0` 返回阻尼模式。
 策略为 `policy/adam/locomotion/policy.pt`，输入 450 维、输出 27 维，推理 50 Hz，
 每个观测项按 `[4, 3, 2, 1, 0]` 堆叠五个推理步的历史。
 
 ## 部署按键
 
-数字键按下表映射为手柄组合键，具体策略仍由各机器人的状态机绑定：
+仿真与实机均支持终端键盘控制。数字键按下表映射为手柄组合键，
+具体策略仍由各机器人的状态机绑定：
 
 | 数字键 | 手柄组合键 | 数字键 | 手柄组合键 |
 | --- | --- | --- | --- |
@@ -158,9 +159,18 @@ ros2 run z_deploy z_deploy_main --robot adam --mode sim
 | `3` | LB + 左 | `7` | RB + 左 |
 | `4` | LB + 右 | `8` | RB + 右 |
 
-已有基础按键保持原映射：`0` 对应 A，`P` 对应 LB+X，`R` 重置仿真，
-Enter 暂停/继续仿真。`W/S/A/D` 调整平移指令，`Q/E` 调整转向指令，
-Space 清零速度；普通方向键仍对应未加 LB/RB 的方向键。
+`9` 对应 RB+A，进入站立（GetUp）；`0` 对应 Y，在运动状态返回阻尼模式，
+在 Passive / Disabled 之间按现有状态机切换。`W/S/A/D` 调整平移指令，
+`Q/E` 调整转向指令，虚拟摇杆每次按键改变 0.1，Space 清零键盘速度；
+普通方向键仍对应未加 LB/RB 的方向键。`R` 重置仿真、Enter 暂停/继续仿真，
+这两个键只在 `sim` 模式启用。
+
+仿真使用本地 USB 手柄，实机使用机器人 SDK 遥控器。手柄有按键或摇杆输入时
+优先使用手柄，并清空键盘累积速度与待处理按键，松开手柄后不会恢复旧键盘指令。
+实机状态超时会屏蔽键盘与遥控器输入并保留原有阻尼保护。
+启动日志末尾显示当前机器人的“手柄按键 → 策略目录”绑定表，不显示键盘操作说明。
+各机器人状态机末尾的 `Factory::key_bindings()` 保留绑定说明，修改按键时应与
+`check_change()` 的实际绑定同步更新。键盘控制功能保留。
 没有绑定策略的组合键保持当前状态。所有机器人状态机的 `check_change()`
 使用 `if` 判断，保留原有的按键边沿检测、站立完成限制和策略失败回退。
 
@@ -178,8 +188,7 @@ G1 的策略绑定如下，站立完成后可进入，运行中也可用这些�
 | `8` | RB + 右 | 预留，保持当前状态 |
 
 `gangnam_style`、`dance_102`、`mimic` 播放结束后自动返回 `locomotion`。
-AMP 和 AMP Zlab 使用 LB+X 返回 Passive、Y 返回 GetUp；
-其余 G1 策略使用 Y 返回 Passive、RB+A 返回 GetUp。
+所有 G1 强化学习策略使用 Y 返回 Passive、RB+A 返回 GetUp。
 
 ## Viewer 说明
 

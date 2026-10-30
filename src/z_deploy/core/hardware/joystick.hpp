@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -33,6 +34,7 @@ public:
         if (running_)
             return;
         next_connect_ = {};
+        connection_failure_reported_ = false;
         timer_.start(0.01, [this]() { handle(); });
         running_ = true;
     }
@@ -62,8 +64,17 @@ private:
             next_connect_ = now + std::chrono::seconds(1);
             auto device = std::make_unique<Joystick>(device_);
             if (!device->isFound())
+            {
+                if (!connection_failure_reported_)
+                {
+                    std::cerr << "Failed to connect joystick: " << device_ << std::endl;
+                    connection_failure_reported_ = true;
+                }
                 return;
+            }
             joystick_ = std::move(device);
+            connection_failure_reported_ = false;
+            std::cout << "Loaded joystick from: " << device_ << std::endl;
         }
 
         JoystickEvent event{};
@@ -73,6 +84,8 @@ private:
         // No new events (EAGAIN) leaves the current held state intact.
         if (!joystick_->isFound())
         {
+            std::cerr << "Joystick disconnected: " << device_ << std::endl;
+            connection_failure_reported_ = true;
             joystick_.reset();
             reset_state();
         }
@@ -153,5 +166,6 @@ private:
     float dpad_y_{0.0F};
     JoySnapshot snapshot_{};
     bool running_{false};
+    bool connection_failure_reported_{false};
     ThreadTimer timer_;
 };

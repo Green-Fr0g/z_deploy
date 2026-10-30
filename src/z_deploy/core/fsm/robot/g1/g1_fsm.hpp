@@ -10,6 +10,7 @@
 #include <fsm/fsm_register.hpp>
 #include <tui/display.hpp>
 #include <utils/math.hpp>
+#include <utils/utils.hpp>
 
 namespace g1
 {
@@ -17,9 +18,9 @@ namespace g1
     // Policy shortcuts (keyboard 1-8):
     // LB + Up/Down/Left/Right -> RLLocomotion / AMP / GangnamStyle / Dance102.
     // RB + Up/Down/Left/Right -> AmpZlab / Mimic / ZLocomotion / reserved.
-    // Passive: A / RB+A -> GetUp, Y -> Disabled; Disabled: Y -> Passive.
+    // Passive: RB+A -> GetUp, Y -> Disabled; Disabled: Y -> Passive.
     // GetUp: Y -> Passive. RLLocomotion / Dance102: Y -> Passive, RB+A -> GetUp.
-    // AMP: LB+X -> Passive, Y -> GetUp.
+    // AMP: Y -> Passive, RB+A -> GetUp.
 
     class Passive : public FsmState
     {
@@ -196,6 +197,8 @@ namespace g1
 
         std::string check_change() override
         {
+            if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 60.0))
+                return "Passive";
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
@@ -250,6 +253,8 @@ namespace g1
 
         std::string check_change() override
         {
+            if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 20.0))
+                return "Passive";
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
@@ -324,6 +329,8 @@ namespace g1
 
         std::string check_change() override
         {
+            if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 60.0))
+                return "Passive";
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
@@ -378,6 +385,8 @@ namespace g1
 
         std::string check_change() override
         {
+            if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 20.0))
+                return "Passive";
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
@@ -452,6 +461,8 @@ namespace g1
 
         std::string check_change() override
         {
+            if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 60.0))
+                return "Passive";
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
@@ -506,6 +517,8 @@ namespace g1
 
         std::string check_change() override
         {
+            if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 20.0))
+                return "Passive";
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
@@ -580,6 +593,8 @@ namespace g1
 
         std::string check_change() override
         {
+            if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 60.0))
+                return "Passive";
             poll_input();
             if (!ctx_.policy.policy_active())
                 return "Passive";
@@ -642,6 +657,18 @@ namespace g1
         }
 
         std::string initial_state() const override { return "Disabled"; }
+
+        std::vector<std::vector<std::string>> key_bindings() const override
+        {
+            return {{"LB+Up", "RLLocomotion", "g1/locomotion"},
+                    {"LB+Down", "AMP", "g1/amp"},
+                    {"LB+Left", "GangnamStyle", "g1/gangnam_style"},
+                    {"LB+Right", "Dance102", "g1/dance_102"},
+                    {"RB+Up", "AmpZlab", "g1/amp_zlab"},
+                    {"RB+Down", "Mimic", "g1/mimic"},
+                    {"RB+Left", "ZLocomotion", "g1/zlocomotion"},
+                    {"RB+Right", "Unassigned", "-"}};
+        }
     };
 
 } // namespace g1

@@ -232,6 +232,20 @@ inline void write_row(const std::vector<std::string> &cells,
 }
 
 } // namespace detail
+inline void print_banner()
+{
+    std::lock_guard<std::mutex> lock(detail::mtx);
+    detail::finalize_progress();
+    std::cout << detail::kCyan
+              << "  ███████╗\n"
+              << "  ╚══███╔╝\n"
+              << "    ███╔╝\n"
+              << "   ███╔╝\n"
+              << "  ███████╗\n"
+              << "  ╚══════╝\n"
+              << "\033[37m   z_deploy" << detail::kReset << "\n\n" << std::flush;
+}
+
 
 inline void message(const std::string &status, const std::string &text)
 {
@@ -410,6 +424,17 @@ inline void table(const std::vector<std::string> &headers,
     for (const auto &row : rows)
         detail::write_row(row, widths, right_align);
     detail::write_rule(widths, "└", "┴", "┘");
+}
+
+inline void policy_bindings(const std::string &robot,
+                            const std::vector<std::vector<std::string>> &bindings)
+{
+    message("INFO", robot + " · 策略目录（相对于 policy/）");
+    std::vector<std::vector<std::string>> rows;
+    for (const auto &binding : bindings)
+        if (binding.size() >= 3)
+            rows.push_back({binding[0], binding[1] == "Unassigned" ? "未绑定" : binding[2]});
+    table({"手柄按键", "策略目录"}, rows);
 }
 
 } // namespace tui

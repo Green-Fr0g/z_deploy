@@ -355,6 +355,18 @@ public:
     }
 
     std::string initial_state() const override { return "Disabled"; }
+
+    std::vector<std::vector<std::string>> key_bindings() const override
+    {
+        return {{"LB+Up", "RLLocomotion", "g1_23/locomotion"},
+                {"LB+Down", "Mimic", "g1_23/mimic"},
+                {"LB+Left", "Unassigned", "-"},
+                {"LB+Right", "Dance", "g1_23/dance1_subject2"},
+                {"RB+Up", "Unassigned", "-"},
+                {"RB+Down", "Unassigned", "-"},
+                {"RB+Left", "Unassigned", "-"},
+                {"RB+Right", "Unassigned", "-"}};
+    }
 };
 
 } // namespace g1_23

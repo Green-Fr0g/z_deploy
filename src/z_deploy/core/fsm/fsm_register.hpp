@@ -16,6 +16,8 @@ public:
     virtual std::string type() const = 0;
     virtual std::vector<std::string> supported_states() const = 0;
     virtual std::string initial_state() const = 0;
+    // Display rows: gamepad combination, state, policy directory.
+    virtual std::vector<std::vector<std::string>> key_bindings() const = 0;
 };
 
 class FsmRegister
@@ -54,6 +56,14 @@ public:
     bool supported(const std::string &type) const
     {
         return factories_.count(type) != 0;
+    }
+
+    std::vector<std::vector<std::string>> key_bindings(const std::string &type) const
+    {
+        const auto it = factories_.find(type);
+        if (it == factories_.end())
+            return {};
+        return it->second->key_bindings();
     }
 
 private:

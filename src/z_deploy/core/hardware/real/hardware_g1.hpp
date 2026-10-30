@@ -26,6 +26,7 @@
 
 #include <hardware/hardware_base.hpp>
 #include <hardware/hardware_register.hpp>
+#include <hardware/input.hpp>
 #include <tui/display.hpp>
 
 // G1 29-DOF low-level backend. RobotState/RobotCommand use base.yaml order;
@@ -45,19 +46,27 @@ public:
     joybutton get_joy_button() const override
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        return state_fresh() ? input_.current : joybutton::None;
+        return state_fresh() ? input_.get_snapshot().current : joybutton::None;
     }
 
     joyaxis get_joy_axis() const override
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        return state_fresh() ? input_.axis : joyaxis{};
+        return state_fresh() ? input_.get_snapshot().axis : joyaxis{};
     }
 
 protected:
     HardwareG1(const RobotConfig &config, std::vector<std::size_t> sdk_joint_indices)
         : HardwareBase(config), network_interface_(network_interface_from_environment()),
-          sdk_joint_indices_(std::move(sdk_joint_indices))
+          sdk_joint_indices_(std::move(sdk_joint_indices)),
+          input_([this](JoySnapshot &snapshot)
+                 {
+                     std::lock_guard<std::mutex> lock(state_mutex_);
+                     if (!state_fresh())
+                         return false;
+                     snapshot = remote_input_;
+                     return true;
+                 })
     {
         if (dof_ != sdk_joint_indices_.size())
             throw std::invalid_argument("G1 real hardware joint count does not match base.yaml");
@@ -83,6 +92,7 @@ protected:
                     throw std::runtime_error("Timed out waiting for G1 rt/lowstate on " + network_interface_);
             }
             release_motion_control();
+            input_.start();
             control_ready_ = true;
             tui::message("INFO", "G1 real hardware ready on " + network_interface_ +
                                      " (" + std::to_string(dof_) + " joints)");
@@ -96,6 +106,7 @@ protected:
 
     void stop_backend() override
     {
+        input_.stop();
         {
             std::lock_guard<std::mutex> lock(command_mutex_);
             // Finish with damping on the mapped motors; unused SDK slots stay disabled.
@@ -121,7 +132,7 @@ protected:
         subscriber_.reset();
         state_received_.store(false);
         std::lock_guard<std::mutex> lock(state_mutex_);
-        input_ = {};
+        remote_input_ = {};
         last_state_time_ = {};
     }
 
@@ -247,7 +258,7 @@ private:
             return std::clamp(value, -1.0F, 1.0F);
         };
         // Unitree ly/ry are positive forward/up; joyaxis uses positive down.
-        input_.axis = {axis(4), -axis(20), axis(8), -axis(12)};
+        remote_input_.axis = {axis(4), -axis(20), axis(8), -axis(12)};
 
         const bool rb = (buttons & (1U << 0)) != 0;
         const bool lb = (buttons & (1U << 1)) != 0;
@@ -269,8 +280,8 @@ private:
             }
         if (lb && rb)
             button = joybutton::LB_RB;
-        input_.previous = input_.current;
-        input_.current = button;
+        remote_input_.previous = remote_input_.current;
+        remote_input_.current = button;
     }
 
     bool valid_command(const RobotCommand &command) const
@@ -314,11 +325,12 @@ private:
     std::atomic<bool> accepting_state_{false};
     mutable std::mutex state_mutex_;
     std::condition_variable state_cv_;
-    JoySnapshot input_{};
+    JoySnapshot remote_input_{};
     std::chrono::steady_clock::time_point last_state_time_{};
     std::mutex command_mutex_;
     bool control_ready_{false};
     bool command_warning_{false};
+    InputHandler input_;
 };
 
 Z_REGISTER_HARDWARE("real", "g1", HardwareG1)

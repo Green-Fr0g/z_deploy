@@ -47,6 +47,7 @@ std::filesystem::path policy_root()
 
 int main(int argc, char **argv)
 {
+    tui::print_banner();
     std::string robot;
     std::string mode="sim";
     const auto policies = policy_root();
@@ -119,6 +120,7 @@ int main(int argc, char **argv)
         if (!fsm)
             throw std::runtime_error("No FSM registered for robot: " + robot);
 
+        tui::policy_bindings(robot, FsmRegister::instance().key_bindings(robot));
         active_fsm = fsm.get();
         fsm->run();
         active_fsm = nullptr;

@@ -10,6 +10,7 @@
 #include <fsm/fsm_register.hpp>
 #include <tui/display.hpp>
 #include <utils/math.hpp>
+#include <utils/utils.hpp>
 
 namespace dr02
 {
@@ -185,6 +186,8 @@ public:
 
     std::string check_change() override
     {
+        if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 60.0))
+            return "Passive";
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
@@ -227,6 +230,8 @@ public:
 
     std::string check_change() override
     {
+        if (utils::tilt_limit_exceeded(ctx_.robot.get_base_quaternion(), 20.0))
+            return "Passive";
         poll_input();
         if (!ctx_.policy.policy_active())
             return "Passive";
@@ -281,6 +286,18 @@ public:
     }
 
     std::string initial_state() const override { return "Disabled"; }
+
+    std::vector<std::vector<std::string>> key_bindings() const override
+    {
+        return {{"LB+Up", "RLLocomotion", "dr02/locomotion"},
+                {"LB+Down", "Mimic", "dr02/mimic"},
+                {"LB+Left", "Unassigned", "-"},
+                {"LB+Right", "Unassigned", "-"},
+                {"RB+Up", "Unassigned", "-"},
+                {"RB+Down", "Unassigned", "-"},
+                {"RB+Left", "Unassigned", "-"},
+                {"RB+Right", "Unassigned", "-"}};
+    }
 };
 
 } // namespace dr02

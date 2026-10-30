@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -18,8 +19,16 @@
 class InputHandler
 {
 public:
+    // Return false while the external source is unavailable (e.g. stale robot state).
+    using InputSource = std::function<bool(JoySnapshot &)>;
+
     explicit InputHandler(std::string joystick_device = "/dev/input/js0")
         : joystick_(std::move(joystick_device))
+    {
+    }
+
+    explicit InputHandler(InputSource external_source)
+        : external_source_(std::move(external_source))
     {
     }
 
@@ -33,7 +42,10 @@ public:
         if (running_)
             return;
         keyboard_.start();
-        joystick_.start();
+        if (!external_source_)
+            joystick_.start();
+        // Seed held remote buttons before the initial FSM state is entered.
+        handle();
         timer_.start(0.01, [this]() { handle(); });
         running_ = true;
     }
@@ -62,17 +74,18 @@ private:
 
     static float filter_axis(float value)
     {
-        return std::fabs(value) > deadzone_ ? value : 0.0F;
+        return std::isfinite(value) && std::fabs(value) > deadzone_
+                   ? std::clamp(value, -1.0F, 1.0F) : 0.0F;
     }
 
-    static joybutton key_button(Keyboard key)
+    joybutton key_button(Keyboard key) const
     {
         // Policy shortcuts: 1-4 = LB + up/down/left/right,
         //                   5-8 = RB + up/down/left/right.
         switch (key)
         {
-        case Keyboard::Num0: return joybutton::A;
-        case Keyboard::P: return joybutton::LB_X;
+        case Keyboard::Num9: return joybutton::RB_A;
+        case Keyboard::Num0: return joybutton::Y;
         case Keyboard::Num1: return joybutton::LB_DPadUp;
         case Keyboard::Num2: return joybutton::LB_DPadDown;
         case Keyboard::Num3: return joybutton::LB_DPadLeft;
@@ -81,8 +94,8 @@ private:
         case Keyboard::Num6: return joybutton::RB_DPadDown;
         case Keyboard::Num7: return joybutton::RB_DPadLeft;
         case Keyboard::Num8: return joybutton::RB_DPadRight;
-        case Keyboard::R: return joybutton::RB_Y;
-        case Keyboard::Enter: return joybutton::RB_X;
+        case Keyboard::R: return external_source_ ? joybutton::None : joybutton::RB_Y;
+        case Keyboard::Enter: return external_source_ ? joybutton::None : joybutton::RB_X;
         case Keyboard::Up: return joybutton::DPadUp;
         case Keyboard::Down: return joybutton::DPadDown;
         case Keyboard::Left: return joybutton::DPadLeft;
@@ -120,7 +133,10 @@ private:
 
     void handle()
     {
-        auto joystick = joystick_.get_snapshot();
+        JoySnapshot joystick;
+        const bool source_available = external_source_ ? external_source_(joystick) : true;
+        if (!external_source_)
+            joystick = joystick_.get_snapshot();
         auto &axis = joystick.axis;
         axis.L_X = filter_axis(axis.L_X);
         axis.L_Y = filter_axis(axis.L_Y);
@@ -136,7 +152,19 @@ private:
         keyboard_.consume_raw();
         const auto now = std::chrono::steady_clock::now();
         std::lock_guard<std::mutex> lock(mutex_);
-        if (joystick_active || now >= button_until_)
+        if (!source_available)
+        {
+            keyboard_state_ = {};
+            button_until_ = {};
+            snapshot_ = {};
+            return;
+        }
+        if (joystick_active)
+        {
+            keyboard_state_ = {};
+            button_until_ = {};
+        }
+        if (now >= button_until_)
             keyboard_state_.current = joybutton::None;
         if (!joystick_active && key != Keyboard::None)
             apply_key(key, now);
@@ -152,6 +180,7 @@ private:
 
     KeyboardHandler keyboard_;
     JoystickHandler joystick_;
+    InputSource external_source_;
     mutable std::mutex mutex_;
     JoySnapshot keyboard_state_{};
     JoySnapshot snapshot_{};

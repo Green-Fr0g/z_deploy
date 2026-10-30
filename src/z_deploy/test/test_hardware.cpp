@@ -19,7 +19,8 @@ namespace
 void usage(const char *program)
 {
     std::cout << "Usage: " << program << " --robot <g1|g1_23|dr02|adam> --mode <sim|real>\n"
-              << "Receive and display IMU/joint positions only. Real mode reads Z_NETIF.\n";
+              << "Receive and display IMU/joint positions and real robot remote input.\n"
+              << "Real mode reads Z_NETIF. No control commands are sent.\n";
 }
 
 void print_vector(std::ostream &out, const char *label, const std::vector<float> &values)
@@ -31,12 +32,31 @@ void print_vector(std::ostream &out, const char *label, const std::vector<float>
 }
 
 std::string display(const RobotConfig &config, const std::string &mode,
-                    const RobotState &state, bool stale)
+                    const HardwareReceiver::Snapshot &snapshot, bool has_remote, bool stale)
 {
+    const auto &state = snapshot.state;
     std::ostringstream out;
     out << std::fixed << std::setprecision(4);
     out << "Hardware monitor | robot=" << config.robot_name << " | mode=" << mode
         << " | receive only | " << (stale ? "STALE: no new state for 1 s" : "receiving") << '\n';
+    if (has_remote)
+    {
+        const auto &remote = snapshot.remote;
+        const bool remote_stale = snapshot.remote_updated == HardwareReceiver::Clock::time_point{} ||
+            HardwareReceiver::Clock::now() - snapshot.remote_updated >= std::chrono::seconds(1);
+        out << "Remote input (" << (remote_stale ? "STALE" : "receiving") << "):\n"
+            << "  Held: " << HardwareReceiver::button_names(remote.buttons)
+            << " | raw=0x" << std::hex << std::setw(4) << std::setfill('0') << remote.buttons
+            << std::dec << std::setfill(' ') << '\n'
+            << "  Last pressed: " << HardwareReceiver::button_names(remote.last_pressed)
+            << " | Last released: " << HardwareReceiver::button_names(remote.last_released)
+            << " | Changes: " << remote.changes << '\n'
+            << "  Raw axes: LX=" << remote.lx << " LY=" << remote.ly
+            << " RX=" << remote.rx << " RY=" << remote.ry << " L2=" << remote.l2
+            << " (LY/RY positive up)\n";
+    }
+    else
+        out << "Remote input: unavailable on ROS state backend\n";
     print_vector(out, "IMU quaternion (wxyz):", state.base_quat);
     print_vector(out, "IMU RPY (rad):        ", state.base_euler);
     print_vector(out, "IMU gyro (rad/s):     ", state.base_ang_vel);
@@ -81,7 +101,7 @@ int main(int argc, char **argv)
         usage(argv[0]);
         return 2;
     }
-    if (!HardwareReceiver::supported(mode, robot))
+    if (!receiver_supported(mode, robot))
     {
         std::cerr << "No receiver available for mode=" << mode << ", robot=" << robot << '\n';
         return 2;
@@ -93,13 +113,13 @@ int main(int argc, char **argv)
         PolicyConfigLoader config;
         if (!config.load(std::filesystem::path(Z_POLICY_ROOT), robot))
             throw std::runtime_error("Cannot load base.yaml for " + robot);
-        HardwareReceiver hardware(mode, config.robot());
+        auto hardware = create_receiver(mode, config.robot());
         std::cout << "Waiting for joint state and IMU (receive only)...\n";
         const bool terminal = isatty(STDOUT_FILENO) != 0;
         while (rclcpp::ok())
         {
-            hardware.poll();
-            const auto snapshot = hardware.get_snapshot();
+            hardware->poll();
+            const auto snapshot = hardware->get_snapshot();
             if (snapshot.ready())
             {
                 const auto now = std::chrono::steady_clock::now();
@@ -107,7 +127,8 @@ int main(int argc, char **argv)
                                    now - snapshot.imu_updated >= std::chrono::seconds(1);
                 if (terminal)
                     std::cout << "\033[H\033[2J";
-                std::cout << display(config.robot(), mode, snapshot.state, stale) << std::flush;
+                std::cout << display(config.robot(), mode, snapshot, hardware->has_remote(), stale)
+                          << std::flush;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }

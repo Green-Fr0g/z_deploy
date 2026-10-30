@@ -19,19 +19,19 @@ public:
         stop();
     }
 
-    void start()
+    bool start()
     {
         if (raw_mode_)
-            return;
+            return true;
         if (!isatty(STDIN_FILENO) || tcgetattr(STDIN_FILENO, &original_terminal_) == -1)
-            return;
+            return false;
 
         termios raw = original_terminal_;
         raw.c_lflag &= ~(ICANON | ECHO);
         raw.c_cc[VMIN] = 0;
         raw.c_cc[VTIME] = 0;
         if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0)
-            return;
+            return false;
             
         original_flags_ = fcntl(STDIN_FILENO, F_GETFL, 0);
         if (original_flags_ != -1)
@@ -39,6 +39,7 @@ public:
 
         raw_mode_ = true;
         timer_.start(0.01, [this]() { handle(); });
+        return true;
     }
 
     void stop()
